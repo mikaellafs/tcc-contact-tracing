@@ -1,0 +1,15 @@
+version: '3.7'
+
+services:
+  database:
+    container_name: pg-database
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ufes-pg-mikaella
+      POSTGRES_DB: contact_tracing
+    volumes:
+      - ./db-data/:/var/lib/postgresql/data/
+    network_mode: "host"
