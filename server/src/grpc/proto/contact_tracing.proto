@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package pb;
+
+option go_package = "./pb";
+
+import "google/protobuf/timestamp.proto";
+
+service ContactTracing {
+  rpc Register(RegisterRequest) returns (RegisterResult) {}
+  rpc ReportInfection(ReportRequest) returns (ReportResult) {}
+}
+
+message RegisterRequest {
+    Register register = 1;
+    bytes signature = 2;
+}
+
+message Register {
+    string userId = 1;
+    string pk = 2;
+    string password = 3;
+}
+
+message ReportRequest {
+    Report report = 1;
+    bytes signature = 2;
+}
+
+message Report {
+    string userId = 1;
+    google.protobuf.Timestamp dateStartSymptoms = 2;
+    google.protobuf.Timestamp dateDiagnostic = 3;
+    google.protobuf.Timestamp dateReport = 4;
+}
+
+message RegisterResult {
+  int32 status = 1;
+  string message = 2;
+  string serverPk = 3;
+}
+
+message ReportResult {
+  int32 status = 1;
+  string message = 2;
+}
+
