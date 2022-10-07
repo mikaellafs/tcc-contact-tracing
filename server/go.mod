@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/lib/pq v1.10.7 // indirect
 	golang.org/x/net v0.0.0-20221004154528-8021a29435af // indirect
 	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec // indirect
 	golang.org/x/text v0.3.7 // indirect
