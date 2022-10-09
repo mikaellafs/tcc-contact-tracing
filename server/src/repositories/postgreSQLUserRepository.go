@@ -34,8 +34,15 @@ func (r *PostGreSQLUserRepository) Migrate(ctx context.Context) error {
 func (r *PostGreSQLUserRepository) Create(ctx context.Context, user db.User) (*db.User, error) {
 	var id int64
 	err := r.db.QueryRowContext(ctx,
-		"INSERT INTO users(userId, pk, password) values($1, $2, $3) RETURNING id",
+		`INSERT INTO users(userId, pk, password) VALUES($1, $2, $3)
+		ON CONFLICT(userId)
+		DO UPDATE SET
+			pk = $2
+		WHERE users.password = $3
+		RETURNING id`,
 		user.UserId, user.Pk, user.Password).Scan(&id)
+
+	err = parsePostgreSQLError(err)
 
 	user.ID = id
 	return &user, err

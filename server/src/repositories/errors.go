@@ -1,6 +1,9 @@
 package repositories
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 var (
 	ErrDuplicate    = errors.New("record already exists")
@@ -8,3 +11,11 @@ var (
 	ErrUpdateFailed = errors.New("update failed")
 	ErrDeleteFailed = errors.New("delete failed")
 )
+
+func parsePostgreSQLError(err error) error {
+	if strings.Contains(err.Error(), "no rows") {
+		err = ErrDuplicate
+	}
+
+	return err
+}
