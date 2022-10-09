@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 func NewPostgreSQLClient() *sql.DB {
-	err := godotenv.Load(".env")
-
 	host := os.Getenv("POSTGRES_HOST")
 	port := os.Getenv("POSTGRES_PORT")
 	user := os.Getenv("POSTGRES_USER")
@@ -27,6 +24,5 @@ func NewPostgreSQLClient() *sql.DB {
 		panic(err)
 	}
 
-	fmt.Println("DB connection succeed")
 	return db
 }
