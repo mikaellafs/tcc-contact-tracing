@@ -5,6 +5,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
+)
+
+const (
+	userRepositoryLog = "User Repository: "
 )
 
 type PostGreSQLUserRepository struct {
@@ -18,6 +23,8 @@ func NewPostGreSQLUserRepository(db *sql.DB) *PostGreSQLUserRepository {
 }
 
 func (r *PostGreSQLUserRepository) Migrate(ctx context.Context) error {
+	log.Println(userRepositoryLog, "Create users table")
+
 	query := `
     CREATE TABLE IF NOT EXISTS users(
         id SERIAL PRIMARY KEY,
@@ -32,6 +39,8 @@ func (r *PostGreSQLUserRepository) Migrate(ctx context.Context) error {
 }
 
 func (r *PostGreSQLUserRepository) Create(ctx context.Context, user db.User) (*db.User, error) {
+	log.Println(userRepositoryLog, "Create user: ", user)
+
 	var id int64
 	err := r.db.QueryRowContext(ctx,
 		`INSERT INTO users(userId, pk, password) VALUES($1, $2, $3)
@@ -49,6 +58,8 @@ func (r *PostGreSQLUserRepository) Create(ctx context.Context, user db.User) (*d
 }
 
 func (r *PostGreSQLUserRepository) GetByUserId(ctx context.Context, userId string) (*db.User, error) {
+	log.Println(userRepositoryLog, "Get user by id = ", userId)
+
 	row := r.db.QueryRowContext(ctx, "SELECT * FROM users WHERE userId = $1", userId)
 
 	var user db.User
