@@ -27,6 +27,15 @@ services:
       - database
     networks:
       - postgres-network
+  
+  cache:
+    container_name: pg-cache
+    image: redis:6.2-alpine
+    ports:
+      - '6379:6379'
+    command: redis-server --loglevel warning --requirepass "ufes-pg-mikaella" --appendonly yes
+    volumes: 
+      - ./cache:/data
       
 networks: 
   postgres-network:
