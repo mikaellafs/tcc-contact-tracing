@@ -1,12 +1,15 @@
 package main
 
 import (
-	"contacttracing/src/clients"
-	"contacttracing/src/grpc/server"
-	"contacttracing/src/repositories"
-	"contacttracing/src/services"
 	"context"
 	"log"
+
+	"contacttracing/src/clients"
+	"contacttracing/src/grpc/server"
+	"contacttracing/src/models/dto"
+	"contacttracing/src/repositories"
+	"contacttracing/src/services"
+	"contacttracing/src/workers"
 
 	"github.com/joho/godotenv"
 )
@@ -38,7 +41,14 @@ func main() {
 		return
 	}
 
-	grpcService := services.NewGrpcService(userRepo, reportRepo, cacheRepo)
+	contactRepo := repositories.NewPostgreSQLContactRepository(postgresDB)
+	err = contactRepo.Migrate(context.TODO())
+
+	var reportChan chan dto.ReportJob
+	var notifChan chan int
+	go workers.NewContacTracerWorker(contactRepo, 30).Work(reportChan, notifChan)
+
+	grpcService := services.NewGrpcService(userRepo, reportRepo, cacheRepo, reportChan)
 	s := server.NewGrpcCServer(grpcService)
 	s.Serve()
 }

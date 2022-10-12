@@ -2,7 +2,6 @@ package workers
 
 import (
 	"contacttracing/src/interfaces"
-	"contacttracing/src/models/db"
 	"contacttracing/src/models/dto"
 	"context"
 	"log"
@@ -11,7 +10,8 @@ import (
 
 const (
 	contactTracerWorkerLog = "Contact Tracer Worker: "
-	max_attempts           = 5
+	maxAttempts            = 5
+	tryAgainAfter          = 5 * time.Second
 )
 
 type ContactTracerWorker struct {
@@ -23,15 +23,7 @@ func NewContacTracerWorker(repo interfaces.ContactRepository, days int) *Contact
 	return &ContactTracerWorker{contactRepo: repo, daysToTrace: days}
 }
 
-func (w *ContactTracerWorker) NewJob(userId string, date time.Time) dto.ReportJob {
-	return dto.ReportJob{
-		UserId:   userId,
-		Date:     date,
-		Attempts: 0,
-	}
-}
-
-func (w *ContactTracerWorker) Work() (reports chan dto.ReportJob, notifications chan<- int) {
+func (w *ContactTracerWorker) Work(reports chan dto.ReportJob, notifications chan<- int) {
 	for {
 		// Wait for report
 		report := <-reports
@@ -46,12 +38,17 @@ func (w *ContactTracerWorker) Work() (reports chan dto.ReportJob, notifications 
 		// Push report back to 'queue' if some error ocurred for new attempt
 		if err != nil {
 			log.Println(contactTracerWorkerLog, "Failed to get contacts from db: ", err.Error())
-			w.pushReportBack(reports, report)
+
+			time.AfterFunc(tryAgainAfter, func() {
+				w.pushReportBack(reports, report)
+			})
+
 			continue
 		}
 
 		// Create notification for each contact
 		for _, contact := range contacts {
+			log.Println(contactTracerWorkerLog, "Contato com: ", contact.AnotherUser, " por ", contact.Duration.Minutes(), " minutos")
 			w.sendNotification(notifications, contact)
 		}
 	}
@@ -59,7 +56,7 @@ func (w *ContactTracerWorker) Work() (reports chan dto.ReportJob, notifications 
 
 func (w *ContactTracerWorker) pushReportBack(reports chan<- dto.ReportJob, report dto.ReportJob) {
 	// Check attempts
-	if report.Attempts >= max_attempts {
+	if report.Attempts >= maxAttempts {
 		log.Println(contactTracerWorkerLog, "Cannot try to push report back to queue, attempts ran out")
 		return
 	}
@@ -71,6 +68,16 @@ func (w *ContactTracerWorker) pushReportBack(reports chan<- dto.ReportJob, repor
 }
 
 // TODO: implement send notifications
-func (w *ContactTracerWorker) sendNotification(notifications chan<- int, contact db.Contact) {
+func (w *ContactTracerWorker) sendNotification(notifications chan<- int, contact dto.Contact) {
 
+}
+
+func AddReportJob(userId string, date time.Time, channel chan<- dto.ReportJob) {
+	reportJob := dto.ReportJob{
+		UserId:   userId,
+		Date:     date,
+		Attempts: 0,
+	}
+
+	channel <- reportJob
 }
