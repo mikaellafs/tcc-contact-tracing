@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	cacheRepositoryLog = "Cache Repository: "
+	cacheRepositoryLog = "Cache Repository:"
 )
 
 type RedisRepository struct {

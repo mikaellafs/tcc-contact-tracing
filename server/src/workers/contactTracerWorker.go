@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	contactTracerWorkerLog = "Contact Tracer Worker: "
+	contactTracerWorkerLog = "Contact Tracer Worker:"
 	maxAttempts            = 5
 	tryAgainAfter          = 5 * time.Second
 )
@@ -24,6 +24,7 @@ func NewContacTracerWorker(repo interfaces.ContactRepository, days int) *Contact
 }
 
 func (w *ContactTracerWorker) Work(reports chan dto.ReportJob, notifications chan<- int) {
+	log.Println(contactTracerWorkerLog, "Start work")
 	for {
 		// Wait for report
 		report := <-reports
@@ -79,5 +80,6 @@ func AddReportJob(userId string, date time.Time, channel chan<- dto.ReportJob) {
 		Attempts: 0,
 	}
 
+	log.Println(contactTracerWorkerLog, "Add report job: ", reportJob)
 	channel <- reportJob
 }

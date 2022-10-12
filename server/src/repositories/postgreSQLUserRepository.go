@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	userRepositoryLog = "User Repository: "
+	userRepositoryLog = "User Repository:"
 )
 
 type PostGreSQLUserRepository struct {

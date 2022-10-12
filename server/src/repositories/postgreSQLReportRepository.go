@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	reportRepositoryLog = "Report Repository: "
+	reportRepositoryLog = "Report Repository:"
 )
 
 type PostgreSQLReportRepository struct {

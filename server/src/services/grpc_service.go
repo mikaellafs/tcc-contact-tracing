@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	registerLog = "Register: "
-	reportLog   = "Report: "
+	registerLog = "Register:"
+	reportLog   = "Report:"
 )
 
 type GrpcService struct {
