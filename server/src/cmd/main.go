@@ -45,7 +45,7 @@ func main() {
 	err = contactRepo.Migrate(context.TODO())
 
 	reportChan := make(chan dto.ReportJob)
-	notifChan := make(chan int)
+	notifChan := make(chan dto.NotificationJob)
 	go workers.NewContacTracerWorker(contactRepo, 30).Work(reportChan, notifChan)
 
 	grpcService := services.NewGrpcService(userRepo, reportRepo, cacheRepo, reportChan)

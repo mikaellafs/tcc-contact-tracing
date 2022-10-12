@@ -23,7 +23,7 @@ func NewContacTracerWorker(repo interfaces.ContactRepository, days int) *Contact
 	return &ContactTracerWorker{contactRepo: repo, daysToTrace: days}
 }
 
-func (w *ContactTracerWorker) Work(reports chan dto.ReportJob, notifications chan<- int) {
+func (w *ContactTracerWorker) Work(reports chan dto.ReportJob, notifications chan<- dto.NotificationJob) {
 	log.Println(contactTracerWorkerLog, "Start work")
 	for {
 		// Wait for report
@@ -47,11 +47,8 @@ func (w *ContactTracerWorker) Work(reports chan dto.ReportJob, notifications cha
 			continue
 		}
 
-		// Create notification for each contact
-		for _, contact := range contacts {
-			log.Println(contactTracerWorkerLog, "Contato com: ", contact.AnotherUser, " por ", contact.Duration.Minutes(), " minutos")
-			w.sendNotification(notifications, contact)
-		}
+		// Create notification job for each contact
+		go w.notifyContacts(contacts, report, notifications)
 	}
 }
 
@@ -68,13 +65,16 @@ func (w *ContactTracerWorker) pushReportBack(reports chan<- dto.ReportJob, repor
 	reports <- report
 }
 
-// TODO: implement send notifications
-func (w *ContactTracerWorker) sendNotification(notifications chan<- int, contact dto.Contact) {
-
+func (w *ContactTracerWorker) notifyContacts(contacts []dto.Contact, report dto.ReportJob, channel chan<- dto.NotificationJob) {
+	for _, contact := range contacts {
+		log.Println(contactTracerWorkerLog, "Contato com:", contact.AnotherUser, "por", contact.Duration.Minutes(), "minutos")
+		AddNotificationJob(contact.AnotherUser, contact.User, report.DBID, contact.Duration, channel)
+	}
 }
 
-func AddReportJob(userId string, date time.Time, channel chan<- dto.ReportJob) {
+func AddReportJob(dbID int64, userId string, date time.Time, channel chan<- dto.ReportJob) {
 	reportJob := dto.ReportJob{
+		DBID:     dbID,
 		UserId:   userId,
 		Date:     date,
 		Attempts: 0,

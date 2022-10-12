@@ -116,7 +116,7 @@ func (s GrpcService) ReportInfection(ctx context.Context, request *pb.ReportRequ
 	s.cache.SaveReport(report.UserId, report.DateDiagnostic.Format(time.RFC3339))
 
 	// Add job to trace contacts
-	go workers.AddReportJob(report.UserId, report.DateDiagnostic, s.tracingJobChan)
+	go workers.AddReportJob(report.ID, report.UserId, report.DateDiagnostic, s.tracingJobChan)
 
 	result.Message = "Reported infection. Contacts are going to get notified."
 	return result, nil

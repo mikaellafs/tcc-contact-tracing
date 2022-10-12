@@ -1,0 +1,18 @@
+package dto
+
+import "time"
+
+type NotificationJob struct {
+	DateNotified    time.Time
+	ForUser         string
+	FromContactWith string
+	FromReport      int64
+	Duration        time.Duration
+	Attempts        int
+}
+
+type Notification struct {
+	DateNotified    time.Time `json:"dateNotified"`
+	ForUser         string    `json:"forUser"`
+	FromContactWith string    `json:"infectedUser"`
+}
