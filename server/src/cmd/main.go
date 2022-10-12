@@ -44,8 +44,8 @@ func main() {
 	contactRepo := repositories.NewPostgreSQLContactRepository(postgresDB)
 	err = contactRepo.Migrate(context.TODO())
 
-	var reportChan chan dto.ReportJob
-	var notifChan chan int
+	reportChan := make(chan dto.ReportJob)
+	notifChan := make(chan int)
 	go workers.NewContacTracerWorker(contactRepo, 30).Work(reportChan, notifChan)
 
 	grpcService := services.NewGrpcService(userRepo, reportRepo, cacheRepo, reportChan)

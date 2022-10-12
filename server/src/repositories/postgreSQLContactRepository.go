@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	contactRepositoryLog                 = "Contact Repository: "
+	contactRepositoryLog                 = "Contact Repository:"
 	minDistance                          = 2
 	maxDiffTimeToConsiderConstantContact = 20 * time.Minute
 )
@@ -103,28 +103,27 @@ func aggregateContactsResult(row *sql.Rows) []dto.Contact {
 			continue
 		}
 
-		if currentContact.User != contact.User {
+		diffTime := time.Time.Sub(contact.FirstContactTimestamp, currentContact.LastContactTimestamp)
+
+		if currentContact.AnotherUser != contact.AnotherUser || diffTime >= maxDiffTimeToConsiderConstantContact {
 			aggregatedContacts = append(aggregatedContacts, dto.Contact{
 				User:        currentContact.User,
 				AnotherUser: currentContact.AnotherUser,
-				Duration:    time.Time.Sub(currentContact.FirstContactTimestamp, currentContact.LastContactTimestamp),
+				Duration:    time.Time.Sub(currentContact.LastContactTimestamp, currentContact.FirstContactTimestamp),
 			})
 
 			currentContact = &contact
 			continue
 		}
 
-		diffTime := time.Time.Sub(contact.FirstContactTimestamp, currentContact.LastContactTimestamp)
-		if diffTime < maxDiffTimeToConsiderConstantContact {
-			currentContact.LastContactTimestamp = contact.LastContactTimestamp
-		}
+		currentContact.LastContactTimestamp = contact.LastContactTimestamp
 	}
 
 	if currentContact != nil {
 		aggregatedContacts = append(aggregatedContacts, dto.Contact{
 			User:        currentContact.User,
 			AnotherUser: currentContact.AnotherUser,
-			Duration:    time.Time.Sub(currentContact.FirstContactTimestamp, currentContact.LastContactTimestamp),
+			Duration:    time.Time.Sub(currentContact.LastContactTimestamp, currentContact.FirstContactTimestamp),
 		})
 	}
 
