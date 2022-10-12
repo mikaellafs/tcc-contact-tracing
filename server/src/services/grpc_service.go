@@ -10,7 +10,6 @@ import (
 	"contacttracing/src/interfaces"
 	"contacttracing/src/models/db"
 	"contacttracing/src/models/dto"
-	"contacttracing/src/utils"
 	"contacttracing/src/workers"
 )
 
@@ -42,18 +41,11 @@ func (s GrpcService) Register(ctx context.Context, request *pb.RegisterRequest) 
 	}
 
 	// Validate message
-	isValid, err := utils.ValidateMessage(request.GetRegister(), request.GetRegister().GetPk(), request.GetSignature())
+	r, err := validateGrpcMessage(request.GetRegister(), request.GetRegister().GetPk(), request.GetSignature())
 	if err != nil {
-		result.Status = http.StatusBadRequest
-		result.Message = "Failed to validate message: " + err.Error()
-		log.Println(registerLog, result.Message)
-		return result, nil
-	}
-
-	if !isValid {
-		result.Status = http.StatusForbidden
-		result.Message = "Signature is not valid for this message"
-		log.Println(registerLog, result.Message)
+		result.Status = r.Status
+		result.Message = r.Message
+		log.Println(registerLog, err.Error())
 		return result, nil
 	}
 
@@ -98,18 +90,11 @@ func (s GrpcService) ReportInfection(ctx context.Context, request *pb.ReportRequ
 	}
 
 	// Validate message
-	isValid, err := utils.ValidateMessage(request.GetReport(), user.Pk, request.GetSignature())
+	r, err := validateGrpcMessage(request.GetReport(), user.Pk, request.GetSignature())
 	if err != nil {
-		result.Status = http.StatusBadRequest
-		result.Message = "Failed to validate message: " + err.Error()
-		log.Println(reportLog, result.Message)
-		return result, nil
-	}
-
-	if !isValid {
-		result.Status = http.StatusForbidden
-		result.Message = "Signature is not valid for this message"
-		log.Println(reportLog, result.Message)
+		result.Status = r.Status
+		result.Message = r.Message
+		log.Println(reportLog, err.Error())
 		return result, nil
 	}
 
