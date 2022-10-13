@@ -12,7 +12,7 @@ type NotificationJob struct {
 }
 
 type Notification struct {
-	DateNotified    time.Time `json:"dateNotified"`
-	ForUser         string    `json:"forUser"`
-	FromContactWith string    `json:"infectedUser"`
+	DateNotified time.Time
+	ForUser      string
+	ReportId     int64
 }

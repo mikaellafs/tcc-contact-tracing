@@ -10,7 +10,7 @@ import (
 
 const (
 	contactTracerWorkerLog = "Contact Tracer Worker:"
-	maxAttempts            = 5
+	maxAttemptsReportJob   = 5
 	tryAgainAfter          = 5 * time.Second
 )
 
@@ -54,7 +54,7 @@ func (w *ContactTracerWorker) Work(reports chan dto.ReportJob, notifications cha
 
 func (w *ContactTracerWorker) pushReportBack(reports chan<- dto.ReportJob, report dto.ReportJob) {
 	// Check attempts
-	if report.Attempts >= maxAttempts {
+	if report.Attempts >= maxAttemptsReportJob {
 		log.Println(contactTracerWorkerLog, "Cannot try to push report back to queue, attempts ran out")
 		return
 	}
