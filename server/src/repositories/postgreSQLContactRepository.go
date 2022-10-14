@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"time"
 
@@ -12,7 +11,7 @@ import (
 )
 
 const (
-	contactRepositoryLog                 = "Contact Repository:"
+	contactRepositoryLog                 = "[Contact Repository]"
 	minDistance                          = 2
 	maxDiffTimeToConsiderConstantContact = 20 * time.Minute
 )
@@ -43,9 +42,6 @@ func (r *PostgreSQLContactRepository) Migrate(ctx context.Context) error {
     );
     `
 	_, err := r.db.ExecContext(ctx, query)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
 	return err
 }
 
