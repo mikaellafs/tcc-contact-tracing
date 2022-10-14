@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	cacheRepositoryLog = "Cache Repository:"
+	cacheRepositoryLog = "[Cache Repository]"
 )
 
 type RedisRepository struct {
@@ -24,21 +24,20 @@ func NewRedisRepository(client *redis.Client) *RedisRepository {
 	return repo
 }
 
-// TODO: change date to time.Time and convert to string inside the function
-func (r *RedisRepository) SaveReport(userId, date string) {
+func (r *RedisRepository) SaveReport(userId string, date time.Time) {
 	log.Println(cacheRepositoryLog, "Save report from user ", userId, ", diagnosticated at ", date)
-	key := r.makeReportKey(userId, date)
+	key := r.makeReportKey(userId, date.Format(time.RFC3339))
 	r.client.Set(key, date, 0)
 }
 
 func (r *RedisRepository) GetReportsFrom(userId string) []time.Time {
 	log.Println(cacheRepositoryLog, "Get reports from user ", userId)
 
-	iter := r.client.Scan(0, "prefix:"+userId, 0).Iterator()
+	iter := r.client.Scan(0, "prefix:report:"+userId, 0).Iterator()
 
 	var dates []time.Time
 	for iter.Next() {
-		t, err := time.Parse(iter.Val(), time.RFC3339)
+		t, err := time.Parse(time.RFC3339, iter.Val())
 		if err == nil {
 			dates = append(dates, t)
 		}
@@ -47,25 +46,28 @@ func (r *RedisRepository) GetReportsFrom(userId string) []time.Time {
 	return dates
 }
 
-// TODO: change date to time.Time and convert to string inside the function
-func (r *RedisRepository) SaveNotification(userId string, fromReport int64, date string) {
+func (r *RedisRepository) SaveNotification(userId string, fromReport int64, date time.Time) {
 	log.Println(cacheRepositoryLog, "Save notification for user", userId, "and report id", fromReport)
 	key := r.makeNotificationKey(userId, fromReport)
-	r.client.Set(key, date, 0)
+	log.Println(cacheRepositoryLog, date.Format(time.RFC3339))
+	r.client.Set(key, date.Format(time.RFC3339), 0)
 }
 
 func (r *RedisRepository) GetNotificationFrom(userId string, reportId int64) *dto.Notification {
 	log.Println(cacheRepositoryLog, "Get notification from user", userId, "and report id", reportId)
 
 	key := r.makeNotificationKey(userId, reportId)
-	result := r.client.Get(key)
+	value, err := r.client.Get(key).Result()
 
-	if result == nil {
+	if err != nil {
+		log.Println(cacheRepositoryLog, err.Error())
 		return nil
 	}
 
-	dateNotification, err := time.Parse(result.Val(), time.RFC3339)
+	log.Println(cacheRepositoryLog, "Value found:", value, "for key:", key)
+	dateNotification, err := time.Parse(time.RFC3339, value)
 	if err != nil {
+		log.Println(cacheRepositoryLog, err.Error())
 		return nil
 	}
 
@@ -77,9 +79,9 @@ func (r *RedisRepository) GetNotificationFrom(userId string, reportId int64) *dt
 }
 
 func (r *RedisRepository) makeReportKey(userId, reportDate string) string {
-	return userId + "/" + reportDate
+	return "report:" + userId + "/" + reportDate
 }
 
 func (r *RedisRepository) makeNotificationKey(userId string, reportId int64) string {
-	return userId + "/" + strconv.FormatInt(reportId, 10)
+	return "notificaton:" + userId + "/" + strconv.FormatInt(reportId, 10)
 }

@@ -6,9 +6,9 @@ import (
 )
 
 type CacheRepository interface {
-	SaveReport(userId, date string)
+	SaveReport(userId string, date time.Time)
 	GetReportsFrom(userId string) []time.Time
 
-	SaveNotification(userId string, fromReport int64, date string)
+	SaveNotification(userId string, fromReport int64, date time.Time)
 	GetNotificationFrom(userId string, reportId int64) *dto.Notification
 }
