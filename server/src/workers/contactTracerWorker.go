@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	contactTracerWorkerLog = "Contact Tracer Worker:"
+	contactTracerWorkerLog = "[Contact Tracer Worker]"
 	maxAttemptsReportJob   = 5
 	tryAgainAfter          = 5 * time.Second
 )
@@ -68,7 +68,7 @@ func (w *ContactTracerWorker) pushReportBack(reports chan<- dto.ReportJob, repor
 func (w *ContactTracerWorker) notifyContacts(contacts []dto.Contact, report dto.ReportJob, channel chan<- dto.NotificationJob) {
 	for _, contact := range contacts {
 		log.Println(contactTracerWorkerLog, "Contato com:", contact.AnotherUser, "por", contact.Duration.Minutes(), "minutos")
-		AddNotificationJob(contact.AnotherUser, contact.User, report.DBID, contact.Duration, channel)
+		AddNotificationJob(contact.AnotherUser, report.DBID, contact.Duration, channel)
 	}
 }
 
