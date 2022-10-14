@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	registerLog = "Register:"
-	reportLog   = "Report:"
+	registerLog = "[Register]"
+	reportLog   = "[Report]"
 )
 
 type GrpcService struct {
@@ -113,7 +113,7 @@ func (s GrpcService) ReportInfection(ctx context.Context, request *pb.ReportRequ
 	}
 
 	// Save report at risk cache
-	s.cache.SaveReport(report.UserId, report.DateDiagnostic.Format(time.RFC3339))
+	s.cache.SaveReport(report.UserId, report.DateDiagnostic)
 
 	// Add job to trace contacts
 	go workers.AddReportJob(report.ID, report.UserId, report.DateDiagnostic, s.tracingJobChan)

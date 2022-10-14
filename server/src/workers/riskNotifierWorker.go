@@ -1,14 +1,17 @@
 package workers
 
 import (
-	"contacttracing/src/interfaces"
-	"contacttracing/src/models/dto"
+	"context"
 	"log"
 	"time"
+
+	"contacttracing/src/interfaces"
+	"contacttracing/src/models/db"
+	"contacttracing/src/models/dto"
 )
 
 const (
-	riskNotifierWorkerLog      = "Risk Notifier Worker:"
+	riskNotifierWorkerLog      = "[Risk Notifier Worker]"
 	maxAttemptsNotificationJob = 5
 )
 
@@ -53,8 +56,16 @@ func (w *RiskNotifierWorker) Work(notifications chan dto.NotificationJob) {
 			w.pushNotificationBack(notifications, notificationJob)
 		})
 
-		// TODO: If everything went well, save notification to db
+		// If everything went well, save notification to db
+		now := time.Now()
+		w.notificationRepo.Create(context.TODO(), db.Notification{
+			ForUser:    notificationJob.ForUser,
+			FromReport: notificationJob.FromReport,
+			Date:       now,
+		})
 
+		// And also in cache
+		w.cacheRepository.SaveNotification(notificationJob.ForUser, notificationJob.FromReport, now)
 	}
 }
 
@@ -71,13 +82,12 @@ func (w *RiskNotifierWorker) pushNotificationBack(notifications chan<- dto.Notif
 	notifications <- job
 }
 
-func AddNotificationJob(userNotified, userInfected string, fromReport int64, contactDuration time.Duration, notifChan chan<- dto.NotificationJob) {
+func AddNotificationJob(userNotified string, fromReport int64, contactDuration time.Duration, notifChan chan<- dto.NotificationJob) {
 	notificationJob := dto.NotificationJob{
-		ForUser:         userNotified,
-		FromContactWith: userInfected,
-		FromReport:      fromReport,
-		Duration:        contactDuration,
-		Attempts:        0,
+		ForUser:    userNotified,
+		FromReport: fromReport,
+		Duration:   contactDuration,
+		Attempts:   0,
 	}
 
 	log.Println(riskNotifierWorkerLog, "Add notification job:", notificationJob)
