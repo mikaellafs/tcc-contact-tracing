@@ -18,13 +18,18 @@ const (
 type RiskNotifierWorker struct {
 	cacheRepository        interfaces.CacheRepository
 	notificationRepo       interfaces.NotificationRepository
+	brokerRepository       interfaces.BrokerRepository
 	riskContactMinDuration time.Duration
 }
 
-func NewRiskNotifierWorker(repo interfaces.NotificationRepository, cacheRepository interfaces.CacheRepository, minContactDuration time.Duration) *RiskNotifierWorker {
+func NewRiskNotifierWorker(repo interfaces.NotificationRepository,
+	cacheRepository interfaces.CacheRepository,
+	brokerRepository interfaces.BrokerRepository,
+	minContactDuration time.Duration) *RiskNotifierWorker {
 	worker := new(RiskNotifierWorker)
 	worker.notificationRepo = repo
 	worker.cacheRepository = cacheRepository
+	worker.brokerRepository = brokerRepository
 	worker.riskContactMinDuration = minContactDuration
 
 	return worker
@@ -49,15 +54,19 @@ func (w *RiskNotifierWorker) Work(notifications chan dto.NotificationJob) {
 			continue
 		}
 
-		// TODO: Notify via mqtt topic
+		// Notify via mqtt topic
+		now := time.Now()
+		err := w.brokerRepository.PublishNotification(notificationJob.ForUser, w.makeUserNotificationMessage(notificationJob, now))
 
 		// Push report back to 'queue' if some error ocurred for new attempt
-		time.AfterFunc(tryAgainAfter, func() {
-			w.pushNotificationBack(notifications, notificationJob)
-		})
+		if err != nil {
+			time.AfterFunc(tryAgainAfter, func() {
+				w.pushNotificationBack(notifications, notificationJob)
+			})
+			continue
+		}
 
 		// If everything went well, save notification to db
-		now := time.Now()
 		w.notificationRepo.Create(context.TODO(), db.Notification{
 			ForUser:    notificationJob.ForUser,
 			FromReport: notificationJob.FromReport,
@@ -80,6 +89,16 @@ func (w *RiskNotifierWorker) pushNotificationBack(notifications chan<- dto.Notif
 	log.Println(riskNotifierWorkerLog, "Push notification job back to channel for new attempt")
 	job.Attempts += 1
 	notifications <- job
+}
+
+func (w *RiskNotifierWorker) makeUserNotificationMessage(notification dto.NotificationJob, date time.Time) dto.NotificationMessage {
+	return dto.NotificationMessage{
+		Risk: true,
+		Message: `Você esteve em contato com uma pessoa diagnosticada com covid-19 nos últimos 15 dias. 
+				  Siga as recomendações de saúde. Notificado(a) em ` + date.Format(time.RFC822),
+		Date:         date,
+		AmountPeople: 1,
+	}
 }
 
 func AddNotificationJob(userNotified string, fromReport int64, contactDuration time.Duration, notifChan chan<- dto.NotificationJob) {

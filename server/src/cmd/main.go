@@ -31,6 +31,7 @@ var (
 	reportRepo       interfaces.ReportRepository
 	contactRepo      interfaces.ContactRepository
 	notificationRepo interfaces.NotificationRepository
+	mqttRepo         interfaces.BrokerRepository
 
 	// Channels
 	reportChan chan dto.ReportJob
@@ -100,14 +101,16 @@ func initRepositories() {
 		log.Println(err.Error())
 		panic(err.Error())
 	}
+
+	mqttRepo = repositories.NewMqttRepository(mqttClient)
 }
 
 func initWorkers() {
 	reportChan = make(chan dto.ReportJob)
 	notifChan = make(chan dto.NotificationJob)
 
-	go workers.NewContacTracerWorker(contactRepo, 30).Work(reportChan, notifChan)
-	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, 5*time.Minute).Work(notifChan)
+	go workers.NewContacTracerWorker(contactRepo, 15).Work(reportChan, notifChan)
+	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, mqttRepo, 5*time.Minute).Work(notifChan)
 }
 
 func initServer() {
