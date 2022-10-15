@@ -8,10 +8,10 @@ import (
 
 	"contacttracing/src/clients"
 	"contacttracing/src/grpc/server"
+	"contacttracing/src/grpc/service"
 	"contacttracing/src/interfaces"
 	"contacttracing/src/models/dto"
 	"contacttracing/src/repositories"
-	"contacttracing/src/services"
 	"contacttracing/src/workers"
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
@@ -111,7 +111,7 @@ func initWorkers() {
 }
 
 func initServer() {
-	grpcService := services.NewGrpcService(userRepo, reportRepo, cacheRepo, reportChan)
+	grpcService := service.NewGrpcService(userRepo, reportRepo, cacheRepo, reportChan)
 	s := server.NewGrpcCServer(grpcService)
 	s.Serve()
 }

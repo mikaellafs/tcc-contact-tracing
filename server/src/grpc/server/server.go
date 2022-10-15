@@ -2,7 +2,7 @@ package server
 
 import (
 	"contacttracing/src/grpc/pb"
-	"contacttracing/src/services"
+	"contacttracing/src/grpc/service"
 	"log"
 	"net"
 
@@ -10,10 +10,10 @@ import (
 )
 
 type ContactTracingGrpcServer struct {
-	services.GrpcService
+	service.GrpcService
 }
 
-func NewGrpcCServer(s services.GrpcService) ContactTracingGrpcServer {
+func NewGrpcCServer(s service.GrpcService) ContactTracingGrpcServer {
 	return ContactTracingGrpcServer{s}
 }
 
