@@ -4,3 +4,6 @@
 
 # Redis files
 cache
+
+# emqx broker
+tmp
