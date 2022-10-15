@@ -14,6 +14,7 @@ import (
 	"contacttracing/src/services"
 	"contacttracing/src/workers"
 
+	pahomqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/go-redis/redis"
 	"github.com/joho/godotenv"
 )
@@ -22,6 +23,7 @@ var (
 	// Clients
 	redisClient *redis.Client
 	postgresDB  *sql.DB
+	mqttClient  pahomqtt.Client
 
 	// Repositories
 	cacheRepo        interfaces.CacheRepository
@@ -48,20 +50,24 @@ func main() {
 
 	initWorkers()
 
-	grpcService := services.NewGrpcService(userRepo, reportRepo, cacheRepo, reportChan)
-	s := server.NewGrpcCServer(grpcService)
-	s.Serve()
+	initServer()
 }
 
 func initClients() {
 	redisClient = clients.NewRedisClient()
+	log.Println("Redis connection succeed")
+
 	postgresDB = clients.NewPostgreSQLClient()
 	log.Println("DB connection succeed")
+
+	mqttClient = clients.NewMqttClient()
+	log.Println("MQTT connection to broker succeed")
 }
 
 func closeClients() {
 	postgresDB.Close()
 	redisClient.Close()
+	mqttClient.Disconnect(10)
 }
 
 func initRepositories() {
@@ -102,4 +108,10 @@ func initWorkers() {
 
 	go workers.NewContacTracerWorker(contactRepo, 30).Work(reportChan, notifChan)
 	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, 5*time.Minute).Work(notifChan)
+}
+
+func initServer() {
+	grpcService := services.NewGrpcService(userRepo, reportRepo, cacheRepo, reportChan)
+	s := server.NewGrpcCServer(grpcService)
+	s.Serve()
 }
