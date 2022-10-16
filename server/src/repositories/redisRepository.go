@@ -4,6 +4,7 @@ import (
 	"contacttracing/src/models/dto"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -24,26 +25,22 @@ func NewRedisRepository(client *redis.Client) *RedisRepository {
 	return repo
 }
 
-func (r *RedisRepository) SaveReport(userId string, date time.Time) {
+func (r *RedisRepository) SaveReport(userId string, reportId int64, date time.Time) {
 	log.Println(cacheRepositoryLog, "Save report from user ", userId, ", diagnosticated at ", date)
-	key := r.makeReportKey(userId, date.Format(time.RFC3339))
-	r.client.Set(key, date, 0)
+
+	key := r.makeReportKey(userId, reportId)
+	r.client.Set(key, date.Format(time.RFC3339), 0)
 }
 
-func (r *RedisRepository) GetReportsFrom(userId string) []time.Time {
+func (r *RedisRepository) GetReportsFrom(userId string) []dto.Report {
 	log.Println(cacheRepositoryLog, "Get reports from user ", userId)
 
-	iter := r.client.Scan(0, "prefix:report:"+userId, 0).Iterator()
+	prefix := "report:" + userId
+	iter := r.client.Scan(0, "prefix:"+prefix, 0).Iterator()
 
-	var dates []time.Time
-	for iter.Next() {
-		t, err := time.Parse(time.RFC3339, iter.Val())
-		if err == nil {
-			dates = append(dates, t)
-		}
-	}
+	reports := r.parseScanReportsResults(iter)
 
-	return dates
+	return reports
 }
 
 func (r *RedisRepository) SaveNotification(userId string, fromReport int64, date time.Time) {
@@ -78,10 +75,45 @@ func (r *RedisRepository) GetNotificationFrom(userId string, reportId int64) *dt
 	}
 }
 
-func (r *RedisRepository) makeReportKey(userId, reportDate string) string {
-	return "report:" + userId + "/" + reportDate
+func (r *RedisRepository) makeReportKey(userId string, reportId int64) string {
+	return "report:" + userId + "#" + strconv.FormatInt(reportId, 10)
 }
 
 func (r *RedisRepository) makeNotificationKey(userId string, reportId int64) string {
-	return "notificaton:" + userId + "/" + strconv.FormatInt(reportId, 10)
+	return "notificaton:" + userId + "#" + strconv.FormatInt(reportId, 10)
+}
+
+func (r *RedisRepository) parseScanReportsResults(iter *redis.ScanIterator) []dto.Report {
+	var reports []dto.Report
+	for iter.Next() {
+		log.Println(cacheRepositoryLog, iter.Val())
+
+		reportId, date, err := r.extractReport(iter.Val())
+
+		if err == nil {
+			reports = append(reports, dto.Report{
+				ID:             reportId,
+				DateDiagnostic: date,
+			})
+		}
+	}
+
+	return reports
+}
+
+func (r *RedisRepository) extractReport(val string) (int64, time.Time, error) {
+	keyField := strings.Split(val, "/")
+
+	t, err := time.Parse(time.RFC3339, keyField[0])
+	if err != nil {
+		return 0, t, err
+	}
+
+	reportIdStr := strings.Split(keyField[0], "#")[1]
+	rId, err := strconv.ParseInt(reportIdStr, 10, 64)
+	if err != nil {
+		return 0, t, err
+	}
+
+	return rId, t, nil
 }
