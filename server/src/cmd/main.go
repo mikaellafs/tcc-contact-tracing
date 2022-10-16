@@ -19,6 +19,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const (
+	maxDiffDaysFromDiagnosticToConsiderAtRisk = 15
+)
+
 var (
 	// Clients
 	redisClient *redis.Client
@@ -34,8 +38,9 @@ var (
 	mqttRepo         interfaces.BrokerRepository
 
 	// Channels
-	reportChan chan dto.ReportJob
-	notifChan  chan dto.NotificationJob
+	reportChan        chan dto.ReportJob
+	notifChan         chan dto.NotificationJob
+	potentialRiskChan chan dto.PotentialRiskJob
 )
 
 func main() {
@@ -108,9 +113,10 @@ func initRepositories() {
 func initWorkers() {
 	reportChan = make(chan dto.ReportJob)
 	notifChan = make(chan dto.NotificationJob)
+	potentialRiskChan = make(chan dto.PotentialRiskJob)
 
-	go workers.NewContacTracerWorker(contactRepo, 15).Work(reportChan, notifChan)
-	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, mqttRepo, 5*time.Minute).Work(notifChan)
+	go workers.NewContacTracerWorker(contactRepo, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(reportChan, notifChan)
+	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, mqttRepo, 5*time.Minute, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(notifChan)
 }
 
 func initServer() {
