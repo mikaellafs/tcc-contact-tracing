@@ -3,11 +3,13 @@ package workers
 import (
 	"context"
 	"log"
+	"strconv"
 	"time"
 
 	"contacttracing/src/interfaces"
 	"contacttracing/src/models/db"
 	"contacttracing/src/models/dto"
+	"contacttracing/src/utils"
 )
 
 const (
@@ -20,17 +22,21 @@ type RiskNotifierWorker struct {
 	notificationRepo       interfaces.NotificationRepository
 	brokerRepository       interfaces.BrokerRepository
 	riskContactMinDuration time.Duration
+	daysTraced             int
 }
 
 func NewRiskNotifierWorker(repo interfaces.NotificationRepository,
 	cacheRepository interfaces.CacheRepository,
 	brokerRepository interfaces.BrokerRepository,
-	minContactDuration time.Duration) *RiskNotifierWorker {
+	minContactDuration time.Duration,
+	daysTraced int) *RiskNotifierWorker {
+
 	worker := new(RiskNotifierWorker)
 	worker.notificationRepo = repo
 	worker.cacheRepository = cacheRepository
 	worker.brokerRepository = brokerRepository
 	worker.riskContactMinDuration = minContactDuration
+	worker.daysTraced = daysTraced
 
 	return worker
 }
@@ -54,7 +60,14 @@ func (w *RiskNotifierWorker) Work(notifications chan dto.NotificationJob) {
 			continue
 		}
 
-		// Notify via mqtt topic
+		// Notify via mqtt topic if user still at risk
+		isAtRisk := utils.VerifyUserAtRisk()
+
+		if !isAtRisk {
+			log.Println(riskNotifierWorkerLog, "User is not at risk anymore, don't need to notify them")
+			continue
+		}
+
 		now := time.Now()
 		err := w.brokerRepository.PublishNotification(notificationJob.ForUser, w.makeUserNotificationMessage(notificationJob, now))
 
@@ -94,19 +107,21 @@ func (w *RiskNotifierWorker) pushNotificationBack(notifications chan<- dto.Notif
 func (w *RiskNotifierWorker) makeUserNotificationMessage(notification dto.NotificationJob, date time.Time) dto.NotificationMessage {
 	return dto.NotificationMessage{
 		Risk: true,
-		Message: `Você esteve em contato com uma pessoa diagnosticada com covid-19 nos últimos 15 dias. 
-				  Siga as recomendações de saúde. Notificado(a) em ` + date.Format(time.RFC822),
+		Message: "Você esteve em contato com uma pessoa diagnosticada com covid-19 nos últimos " +
+			strconv.Itoa(w.daysTraced) + " dias." +
+			"Siga as recomendações de saúde. Notificado(a) em " + date.Format(time.RFC822),
 		Date:         date,
 		AmountPeople: 1,
 	}
 }
 
-func AddNotificationJob(userNotified string, fromReport int64, contactDuration time.Duration, notifChan chan<- dto.NotificationJob) {
+func AddNotificationJob(lastContact time.Time, userNotified string, fromReport int64, contactDuration time.Duration, notifChan chan<- dto.NotificationJob) {
 	notificationJob := dto.NotificationJob{
-		ForUser:    userNotified,
-		FromReport: fromReport,
-		Duration:   contactDuration,
-		Attempts:   0,
+		DateLastContact: lastContact,
+		ForUser:         userNotified,
+		FromReport:      fromReport,
+		Duration:        contactDuration,
+		Attempts:        0,
 	}
 
 	log.Println(riskNotifierWorkerLog, "Add notification job:", notificationJob)

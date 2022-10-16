@@ -68,7 +68,8 @@ func (w *ContactTracerWorker) pushReportBack(reports chan<- dto.ReportJob, repor
 func (w *ContactTracerWorker) notifyContacts(contacts []dto.Contact, report dto.ReportJob, channel chan<- dto.NotificationJob) {
 	for _, contact := range contacts {
 		log.Println(contactTracerWorkerLog, "Contato com:", contact.AnotherUser, "por", contact.Duration.Minutes(), "minutos")
-		AddNotificationJob(contact.AnotherUser, report.DBID, contact.Duration, channel)
+
+		AddNotificationJob(contact.DateLastContact, contact.AnotherUser, report.DBID, contact.Duration, channel)
 	}
 }
 

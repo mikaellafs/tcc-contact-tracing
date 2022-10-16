@@ -3,7 +3,8 @@ package dto
 import "time"
 
 type Contact struct {
-	User        string
-	AnotherUser string
-	Duration    time.Duration
+	User            string
+	DateLastContact time.Time
+	AnotherUser     string
+	Duration        time.Duration
 }

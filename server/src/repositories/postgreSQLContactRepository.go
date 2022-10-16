@@ -103,9 +103,10 @@ func aggregateContactsResult(row *sql.Rows) []dto.Contact {
 
 		if currentContact.AnotherUser != contact.AnotherUser || diffTime >= maxDiffTimeToConsiderConstantContact {
 			aggregatedContacts = append(aggregatedContacts, dto.Contact{
-				User:        currentContact.User,
-				AnotherUser: currentContact.AnotherUser,
-				Duration:    time.Time.Sub(currentContact.LastContactTimestamp, currentContact.FirstContactTimestamp),
+				User:            currentContact.User,
+				DateLastContact: currentContact.LastContactTimestamp,
+				AnotherUser:     currentContact.AnotherUser,
+				Duration:        time.Time.Sub(currentContact.LastContactTimestamp, currentContact.FirstContactTimestamp),
 			})
 
 			currentContact = &contact
@@ -117,9 +118,10 @@ func aggregateContactsResult(row *sql.Rows) []dto.Contact {
 
 	if currentContact != nil {
 		aggregatedContacts = append(aggregatedContacts, dto.Contact{
-			User:        currentContact.User,
-			AnotherUser: currentContact.AnotherUser,
-			Duration:    time.Time.Sub(currentContact.LastContactTimestamp, currentContact.FirstContactTimestamp),
+			User:            currentContact.User,
+			DateLastContact: currentContact.LastContactTimestamp,
+			AnotherUser:     currentContact.AnotherUser,
+			Duration:        time.Time.Sub(currentContact.LastContactTimestamp, currentContact.FirstContactTimestamp),
 		})
 	}
 
