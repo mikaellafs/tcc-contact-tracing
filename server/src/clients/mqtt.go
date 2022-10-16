@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"contacttracing/src/mqtt"
+	"contacttracing/src/utils/mqtt"
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
 )
