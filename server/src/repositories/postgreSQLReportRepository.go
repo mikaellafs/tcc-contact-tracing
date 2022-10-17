@@ -57,6 +57,16 @@ func (r *PostgreSQLReportRepository) Create(ctx context.Context, report db.Repor
 	return &report, err
 }
 
-func (r *PostgreSQLReportRepository) GetByUserId(ctx context.Context, ReportId string) ([]*db.Report, error) {
-	return nil, nil
+func (r *PostgreSQLReportRepository) GetById(ctx context.Context, reportId int64) (*db.Report, error) {
+	query := `SELECT * FROM reports WHERE id = $1`
+
+	report := db.Report{}
+	err := r.db.QueryRowContext(ctx, query, reportId).Scan(
+		&report.ID, &report.UserId, &report.DateStart, &report.DateDiagnostic, &report.DateReport)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &report, nil
 }
