@@ -65,7 +65,7 @@ func (r *PostgreSQLContactRepository) Create(ctx context.Context, contact db.Con
 }
 
 func (r *PostgreSQLContactRepository) GetContactsWithin(ctx context.Context, days int, from time.Time, userId string) ([]dto.Contact, error) {
-	log.Println(contactRepositoryLog, "Get contacts from ", userId, " within ", days, " days, starting from ", from)
+	log.Println(contactRepositoryLog, "Get contacts from", userId, "within", days, "days, starting from", from)
 
 	rows, err := r.db.QueryContext(ctx, `
 	SELECT id, userId, anotherUser, 
@@ -76,6 +76,27 @@ func (r *PostgreSQLContactRepository) GetContactsWithin(ctx context.Context, day
 			AND EXTRACT(EPOCH FROM ($3 - firstContactTimeStamp))/3600 <= $4*24
 	ORDER BY (anotherUser, firstContactTimestamp, lastContactTimestamp) ASC
 	`, userId, minDistance, from, days)
+	if err != nil {
+		return nil, err
+	}
+
+	contacts := aggregateContactsResult(rows)
+
+	return contacts, nil
+}
+
+func (r *PostgreSQLContactRepository) GetContactsBetweenUsers(ctx context.Context, user1, user2 string, from, to time.Time) ([]dto.Contact, error) {
+	log.Println(contactRepositoryLog, "Get contacts between", user1, "and", user2, "from", from, "to", to)
+
+	query := `
+		SELECT *
+		FROM contacts
+		WHERE userId = $1 AND anotherUser = $2 AND
+			lastContactTimestamp >= $3 AND lastContactTimestamp <= $4
+		ORDER BY (anotherUser, firstContactTimestamp, lastContactTimestamp) ASC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, user1, user2, from, to)
 	if err != nil {
 		return nil, err
 	}
