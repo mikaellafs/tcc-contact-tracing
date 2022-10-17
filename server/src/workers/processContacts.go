@@ -116,5 +116,5 @@ func (p *ContactsProcessor) checkAndProcessUserRisk(contact *dto.ContactFromMess
 	}
 
 	log.Println(contactsProcessorLog, "User", contact.User, "is in contact with infected user", contact.User)
-	AddPotentialRiskJob(contact.User, report.ID, p.potentialRiskChan)
+	AddPotentialRiskJob(contact.User, report.ID, p.potentialRiskChan, p.cacheRepository)
 }
