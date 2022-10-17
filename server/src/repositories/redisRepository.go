@@ -45,8 +45,8 @@ func (r *RedisRepository) GetReportsFrom(userId string) []dto.Report {
 
 func (r *RedisRepository) SaveNotification(userId string, fromReport int64, date time.Time) {
 	log.Println(cacheRepositoryLog, "Save notification for user", userId, "and report id", fromReport)
+
 	key := r.makeNotificationKey(userId, fromReport)
-	log.Println(cacheRepositoryLog, date.Format(time.RFC3339))
 	r.client.Set(key, date.Format(time.RFC3339), 0)
 }
 
@@ -75,12 +75,43 @@ func (r *RedisRepository) GetNotificationFrom(userId string, reportId int64) *dt
 	}
 }
 
+func (r *RedisRepository) SavePotentialRiskJob(userId string, reportId int64) {
+	log.Println(cacheRepositoryLog, "Save potential risk job for user", userId, "and report", reportId)
+
+	key := r.makePotentialRiskJobKey(userId, reportId)
+	r.client.Set(key, "ok", 0)
+}
+
+func (r *RedisRepository) GetPotentialRiskJob(userId string, reportId int64) bool {
+	log.Println(cacheRepositoryLog, "Get potential risk job for user", userId, "and report", reportId)
+
+	key := r.makePotentialRiskJobKey(userId, reportId)
+	_, err := r.client.Get(key).Result()
+	if err != nil {
+		log.Println(cacheRepositoryLog, err.Error())
+		return false
+	}
+
+	return true
+}
+
+func (r *RedisRepository) RemovePotentialRiskJob(userId string, reportId int64) {
+	log.Println(cacheRepositoryLog, "Remove potential risk job for user", userId, "and report", reportId)
+
+	key := r.makePotentialRiskJobKey(userId, reportId)
+	r.client.Del(key)
+}
+
 func (r *RedisRepository) makeReportKey(userId string, reportId int64) string {
 	return "report:" + userId + "#" + strconv.FormatInt(reportId, 10)
 }
 
 func (r *RedisRepository) makeNotificationKey(userId string, reportId int64) string {
 	return "notificaton:" + userId + "#" + strconv.FormatInt(reportId, 10)
+}
+
+func (r *RedisRepository) makePotentialRiskJobKey(userId string, reportId int64) string {
+	return "potentialriskjob:" + userId + "#" + strconv.FormatInt(reportId, 10)
 }
 
 func (r *RedisRepository) parseScanReportsResults(iter *redis.ScanIterator) []dto.Report {
