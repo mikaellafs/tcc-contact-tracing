@@ -9,6 +9,7 @@ import (
 	"contacttracing/src/interfaces"
 	"contacttracing/src/models/db"
 	"contacttracing/src/models/dto"
+	"contacttracing/src/repositories"
 	"contacttracing/src/utils"
 )
 
@@ -75,23 +76,31 @@ func (w *RiskNotifierWorker) Work(notifications chan dto.NotificationJob) {
 
 		// Push report back to 'queue' if some error ocurred for new attempt
 		if err != nil {
-			time.AfterFunc(tryAgainAfter, func() {
-				w.pushNotificationBack(notifications, notificationJob)
-			})
+			w.scheduleToPushBack(notifications, notificationJob)
 			continue
 		}
 
 		// If everything went well, save notification to db
 		// Even if user has not been notified, it's important to save that a risk in the past was identied
-		w.notificationRepo.Create(context.TODO(), db.Notification{
+		_, err = w.notificationRepo.Create(context.TODO(), db.Notification{
 			ForUser:    notificationJob.ForUser,
 			FromReport: notificationJob.FromReport,
 			Date:       now,
 		})
+		if err != nil && err != repositories.ErrDuplicate {
+			w.scheduleToPushBack(notifications, notificationJob)
+			continue
+		}
 
 		// And also in cache
 		w.cacheRepository.SaveNotification(notificationJob.ForUser, notificationJob.FromReport, now)
 	}
+}
+
+func (w *RiskNotifierWorker) scheduleToPushBack(notifications chan<- dto.NotificationJob, job dto.NotificationJob) {
+	time.AfterFunc(tryAgainAfter, func() {
+		w.pushNotificationBack(notifications, job)
+	})
 }
 
 func (w *RiskNotifierWorker) pushNotificationBack(notifications chan<- dto.NotificationJob, job dto.NotificationJob) {

@@ -21,6 +21,7 @@ import (
 
 const (
 	maxDiffDaysFromDiagnosticToConsiderAtRisk = 15
+	contactsTopic                             = "contact"
 )
 
 var (
@@ -117,9 +118,15 @@ func initWorkers() {
 
 	go workers.NewContacTracerWorker(contactRepo, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(reportChan, notifChan)
 	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, mqttRepo, 5*time.Minute, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(notifChan)
+	go workers.NewPotentialRiskTracerWorker(contactRepo, reportRepo, cacheRepo).Work(potentialRiskChan, notifChan)
 }
 
 func initServer() {
+	// Init mqtt broker handler
+	contactsProcessor := workers.NewContactsProcessor(contactRepo, userRepo, cacheRepo, potentialRiskChan, maxDiffDaysFromDiagnosticToConsiderAtRisk)
+	mqttRepo.SubscribeToReceiveContacts(contactsTopic, contactsProcessor.Process)
+
+	// Init grpc server
 	grpcService := service.NewGrpcService(userRepo, reportRepo, cacheRepo, reportChan)
 	s := server.NewGrpcCServer(grpcService)
 	s.Serve()

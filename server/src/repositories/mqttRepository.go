@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	mqttRepositoryLog = "[MQTT Repository Log]"
+	mqttRepositoryLog = "[MQTT Repository]"
 )
 
 type MqttRepository struct {
