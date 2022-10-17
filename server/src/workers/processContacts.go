@@ -108,7 +108,7 @@ func (p *ContactsProcessor) saveContact(userId string, contact *dto.ContactFromM
 }
 
 func (p *ContactsProcessor) checkAndProcessUserRisk(contact *dto.ContactFromMessage, report dto.Report) {
-	isAtRisk := p.isUserAtRisk(time.UnixMilli(contact.LastContactTimestamp), report.DateDiagnostic, contact.Distance)
+	isAtRisk := utils.VerifyUserAtRisk(time.UnixMilli(contact.LastContactTimestamp), report.DateDiagnostic, contact.Distance, p.maxTimeDiffToConsiderAtRisk)
 
 	if !isAtRisk {
 		log.Println(contactsProcessorLog, "User", contact.User, "is NOT at risk for now")
@@ -117,11 +117,4 @@ func (p *ContactsProcessor) checkAndProcessUserRisk(contact *dto.ContactFromMess
 
 	log.Println(contactsProcessorLog, "User", contact.User, "is in contact with infected user", contact.User)
 	AddPotentialRiskJob(contact.User, report.ID, p.potentialRiskChan)
-}
-
-// TODO: Move this verification to utils
-func (p *ContactsProcessor) isUserAtRisk(dateLastContact, dateDiagnostic time.Time, distance float32) bool {
-	diff := time.Time.Sub(dateLastContact, dateDiagnostic)
-
-	return diff < p.maxTimeDiffToConsiderAtRisk && distance <= 2
 }

@@ -61,15 +61,17 @@ func (w *RiskNotifierWorker) Work(notifications chan dto.NotificationJob) {
 		}
 
 		// Notify via mqtt topic if user still at risk
-		isAtRisk := utils.VerifyUserAtRisk()
+		timeDiffStillAtRisk := time.Duration(w.daysTraced) * time.Hour * 24
+		isAtRisk := utils.VerifyUserAtRisk(notificationJob.DateLastContact, time.Now(), 0, timeDiffStillAtRisk)
+
+		var err error
+		now := time.Now()
 
 		if !isAtRisk {
-			log.Println(riskNotifierWorkerLog, "User is not at risk anymore, don't need to notify them")
-			continue
+			log.Println(riskNotifierWorkerLog, "User is not at risk anymore, don't need to notify them right now")
+		} else {
+			err = w.brokerRepository.PublishNotification(notificationJob.ForUser, w.makeUserNotificationMessage(notificationJob, now))
 		}
-
-		now := time.Now()
-		err := w.brokerRepository.PublishNotification(notificationJob.ForUser, w.makeUserNotificationMessage(notificationJob, now))
 
 		// Push report back to 'queue' if some error ocurred for new attempt
 		if err != nil {
@@ -80,6 +82,7 @@ func (w *RiskNotifierWorker) Work(notifications chan dto.NotificationJob) {
 		}
 
 		// If everything went well, save notification to db
+		// Even if user has not been notified, it's important to save that a risk in the past was identied
 		w.notificationRepo.Create(context.TODO(), db.Notification{
 			ForUser:    notificationJob.ForUser,
 			FromReport: notificationJob.FromReport,
