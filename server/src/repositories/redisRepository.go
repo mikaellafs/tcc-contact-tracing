@@ -15,12 +15,14 @@ const (
 )
 
 type RedisRepository struct {
-	client *redis.Client
+	client           *redis.Client
+	reportExpiration time.Duration
 }
 
-func NewRedisRepository(client *redis.Client) *RedisRepository {
+func NewRedisRepository(client *redis.Client, reportExpiration time.Duration) *RedisRepository {
 	repo := new(RedisRepository)
 	repo.client = client
+	repo.reportExpiration = reportExpiration
 
 	return repo
 }
@@ -29,7 +31,7 @@ func (r *RedisRepository) SaveReport(userId string, reportId int64, date time.Ti
 	log.Println(cacheRepositoryLog, "Save report from user ", userId, ", diagnosticated at ", date)
 
 	key := r.makeReportKey(userId, reportId)
-	r.client.Set(key, date.Format(time.RFC3339), 0)
+	r.client.Set(key, date.Format(time.RFC3339), r.reportExpiration)
 }
 
 func (r *RedisRepository) GetReportsFrom(userId string) []dto.Report {
@@ -73,6 +75,40 @@ func (r *RedisRepository) GetNotificationFrom(userId string, reportId int64) *dt
 		ForUser:      userId,
 		DateNotified: dateNotification,
 	}
+}
+
+func (r *RedisRepository) GetNotificationKeysFrom(userId string) []string {
+	log.Println(cacheRepositoryLog, "Get notifications keys from user", userId)
+
+	prefix := "notification:"
+	keys, _, _ := r.client.Scan(0, "prefix:"+prefix, 0).Result()
+
+	return keys
+}
+
+func (r *RedisRepository) RemoveNotificationsAfter(days time.Duration, maxDate time.Time) []string {
+	log.Println(cacheRepositoryLog, "Remove notifications after", days, "days")
+
+	var expiredNotificationsUserIds []string
+	prefix := "notification:"
+	iter := r.client.Scan(0, "prefix:"+prefix, 0).Iterator()
+
+	for iter.Next() {
+		key, user, date, err := r.extractNotification(iter.Val())
+		if err != nil {
+			continue
+		}
+
+		// Check if it is expired
+		if date.Add(days).After(maxDate) {
+			log.Println(cacheRepositoryLog, "Expired notification for user", user)
+
+			r.client.Del(key)
+			expiredNotificationsUserIds = append(expiredNotificationsUserIds, user)
+		}
+	}
+
+	return expiredNotificationsUserIds
 }
 
 func (r *RedisRepository) SavePotentialRiskJob(userId string, reportId int64) {
@@ -133,9 +169,9 @@ func (r *RedisRepository) parseScanReportsResults(iter *redis.ScanIterator) []dt
 }
 
 func (r *RedisRepository) extractReport(val string) (int64, time.Time, error) {
-	keyField := strings.Split(val, "/")
+	keyField := strings.SplitN(val, "/", 2)
 
-	t, err := time.Parse(time.RFC3339, keyField[0])
+	t, err := time.Parse(time.RFC3339, keyField[1])
 	if err != nil {
 		return 0, t, err
 	}
@@ -147,4 +183,19 @@ func (r *RedisRepository) extractReport(val string) (int64, time.Time, error) {
 	}
 
 	return rId, t, nil
+}
+
+// Return userId, reportId and dateNotification
+func (r *RedisRepository) extractNotification(val string) (string, string, time.Time, error) {
+	keyField := strings.SplitN(val, "/", 2)
+
+	t, err := time.Parse(time.RFC3339, keyField[1])
+	if err != nil {
+		return "", "", t, err
+	}
+
+	userId := strings.SplitN(keyField[0], "#", 2)[0]
+	userId = strings.ReplaceAll(userId, "notification:", "")
+
+	return keyField[0], userId, t, nil
 }

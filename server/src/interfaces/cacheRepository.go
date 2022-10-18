@@ -11,6 +11,8 @@ type CacheRepository interface {
 
 	SaveNotification(userId string, fromReport int64, date time.Time)
 	GetNotificationFrom(userId string, reportId int64) *dto.Notification
+	GetNotificationKeysFrom(userId string) []string
+	RemoveNotificationsAfter(days time.Duration, maxDate time.Time) []string
 
 	SavePotentialRiskJob(userId string, reportId int64)
 	GetPotentialRiskJob(userId string, reportId int64) bool
