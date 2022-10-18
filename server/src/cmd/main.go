@@ -22,6 +22,7 @@ import (
 const (
 	maxDiffDaysFromDiagnosticToConsiderAtRisk = 15
 	contactsTopic                             = "contact"
+	reportExpiration                          = 15 * time.Hour * 24 // 15 days
 )
 
 var (
@@ -78,7 +79,7 @@ func closeClients() {
 }
 
 func initRepositories() {
-	cacheRepo = repositories.NewRedisRepository(redisClient)
+	cacheRepo = repositories.NewRedisRepository(redisClient, reportExpiration)
 
 	userRepo = repositories.NewPostGreSQLUserRepository(postgresDB)
 	err := userRepo.Migrate(context.TODO())
@@ -112,13 +113,14 @@ func initRepositories() {
 }
 
 func initWorkers() {
-	reportChan = make(chan dto.ReportJob)
-	notifChan = make(chan dto.NotificationJob)
-	potentialRiskChan = make(chan dto.PotentialRiskJob)
+	reportChan = make(chan dto.ReportJob, 50)
+	notifChan = make(chan dto.NotificationJob, 50)
+	potentialRiskChan = make(chan dto.PotentialRiskJob, 50)
 
 	go workers.NewContacTracerWorker(contactRepo, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(reportChan, notifChan)
 	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, mqttRepo, 5*time.Minute, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(notifChan)
 	go workers.NewPotentialRiskTracerWorker(contactRepo, reportRepo, cacheRepo).Work(potentialRiskChan, notifChan)
+	go workers.NewRiskNotificationCleanerWorker(cacheRepo, mqttRepo, reportExpiration).Work()
 }
 
 func initServer() {

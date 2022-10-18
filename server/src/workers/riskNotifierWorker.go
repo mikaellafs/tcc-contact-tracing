@@ -71,6 +71,8 @@ func (w *RiskNotifierWorker) Work(notifications chan dto.NotificationJob) {
 		if !isAtRisk {
 			log.Println(riskNotifierWorkerLog, "User is not at risk anymore, don't need to notify them right now")
 		} else {
+			// Save in cache
+			w.cacheRepository.SaveNotification(notificationJob.ForUser, notificationJob.FromReport, now)
 			err = w.brokerRepository.PublishNotification(notificationJob.ForUser, w.makeUserNotificationMessage(notificationJob, now))
 		}
 
@@ -91,9 +93,6 @@ func (w *RiskNotifierWorker) Work(notifications chan dto.NotificationJob) {
 			w.scheduleToPushBack(notifications, notificationJob)
 			continue
 		}
-
-		// And also in cache
-		w.cacheRepository.SaveNotification(notificationJob.ForUser, notificationJob.FromReport, now)
 	}
 }
 
