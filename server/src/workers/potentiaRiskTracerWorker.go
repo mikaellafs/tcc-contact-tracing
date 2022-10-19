@@ -89,14 +89,6 @@ func (w *PotentialRiskTracerWorker) pushPotentialRiskBack(potentialRisks chan<- 
 	potentialRisks <- potentialRiskJob
 }
 
-func (w *PotentialRiskTracerWorker) notifyContacts(contacts []dto.Contact, report dto.ReportJob, channel chan<- dto.NotificationJob) {
-	for _, contact := range contacts {
-		log.Println(contactTracerWorkerLog, "Contato com:", contact.AnotherUser, "por", contact.Duration.Minutes(), "minutos")
-
-		AddNotificationJob(contact.DateLastContact, contact.AnotherUser, report.DBID, contact.Duration, channel)
-	}
-}
-
 func AddPotentialRiskJob(user string, reportId int64, channel chan<- dto.PotentialRiskJob, cache interfaces.CacheRepository) {
 	job := dto.PotentialRiskJob{
 		User:     user,

@@ -23,7 +23,9 @@ func NewContacTracerWorker(repo interfaces.ContactRepository, days int) *Contact
 	return &ContactTracerWorker{contactRepo: repo, daysToTrace: days}
 }
 
-func (w *ContactTracerWorker) Work(reports chan dto.ReportJob, notifications chan<- dto.NotificationJob) {
+func (w *ContactTracerWorker) Work(reports chan dto.ReportJob,
+	notifications chan<- dto.NotificationJob,
+	cleanNotifChannel chan<- dto.CleanNotificationJob) {
 	log.Println(contactTracerWorkerLog, "Start work")
 	for {
 		// Wait for report
@@ -49,6 +51,9 @@ func (w *ContactTracerWorker) Work(reports chan dto.ReportJob, notifications cha
 
 		// Create notification job for each contact
 		go w.notifyContacts(contacts, report, notifications)
+
+		// Create clean notification job
+		go AddCleanNotificationJob(report.UserId, cleanNotifChannel)
 	}
 }
 

@@ -43,6 +43,7 @@ var (
 	reportChan        chan dto.ReportJob
 	notifChan         chan dto.NotificationJob
 	potentialRiskChan chan dto.PotentialRiskJob
+	cleanNotifChannel chan dto.CleanNotificationJob
 )
 
 func main() {
@@ -116,11 +117,12 @@ func initWorkers() {
 	reportChan = make(chan dto.ReportJob, 50)
 	notifChan = make(chan dto.NotificationJob, 50)
 	potentialRiskChan = make(chan dto.PotentialRiskJob, 50)
+	cleanNotifChannel = make(chan dto.CleanNotificationJob, 50)
 
-	go workers.NewContacTracerWorker(contactRepo, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(reportChan, notifChan)
+	go workers.NewContacTracerWorker(contactRepo, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(reportChan, notifChan, cleanNotifChannel)
 	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, mqttRepo, 5*time.Minute, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(notifChan)
 	go workers.NewPotentialRiskTracerWorker(contactRepo, reportRepo, cacheRepo).Work(potentialRiskChan, notifChan)
-	go workers.NewRiskNotificationCleanerWorker(cacheRepo, mqttRepo, reportExpiration).Work()
+	go workers.NewRiskNotificationCleanerWorker(cacheRepo, mqttRepo, reportExpiration).Work(cleanNotifChannel)
 }
 
 func initServer() {
