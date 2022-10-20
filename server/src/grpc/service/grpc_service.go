@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"time"
 
 	"contacttracing/src/grpc/pb"
 	"contacttracing/src/interfaces"
@@ -56,10 +55,7 @@ func (s GrpcService) Register(ctx context.Context, request *pb.RegisterRequest) 
 		Password: request.GetRegister().GetPassword(),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(150)*time.Millisecond)
-	defer cancel()
-
-	userSaved, err := s.userRepo.Create(ctx, user)
+	userSaved, err := s.userRepo.Create(context.TODO(), user)
 	if err != nil {
 		result.Status = http.StatusInternalServerError
 		result.Message = err.Error()
@@ -77,11 +73,8 @@ func (s GrpcService) ReportInfection(ctx context.Context, request *pb.ReportRequ
 		Status: http.StatusOK,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(150)*time.Millisecond)
-	defer cancel()
-
 	// Get user pk
-	user, err := s.userRepo.GetByUserId(ctx, request.GetReport().GetUserId())
+	user, err := s.userRepo.GetByUserId(context.TODO(), request.GetReport().GetUserId())
 	if err != nil {
 		result.Status = http.StatusBadRequest
 		result.Message = "Failed to get user from db: " + err.Error()
@@ -90,7 +83,7 @@ func (s GrpcService) ReportInfection(ctx context.Context, request *pb.ReportRequ
 	}
 
 	// Validate message
-	r, err := validateGrpcMessage(request.GetReport(), user.Pk, request.GetSignature())
+	r, err := validateGrpcMessage(parseGrpcReport(request.GetReport()), user.Pk, request.GetSignature())
 	if err != nil {
 		result.Status = r.Status
 		result.Message = r.Message
@@ -99,7 +92,7 @@ func (s GrpcService) ReportInfection(ctx context.Context, request *pb.ReportRequ
 	}
 
 	// Create report in DB
-	report, err := s.reportRepo.Create(ctx, db.Report{
+	report, err := s.reportRepo.Create(context.TODO(), db.Report{
 		UserId:         request.GetReport().GetUserId(),
 		DateStart:      request.GetReport().GetDateStartSymptoms().AsTime(),
 		DateDiagnostic: request.GetReport().GetDateDiagnostic().AsTime(),

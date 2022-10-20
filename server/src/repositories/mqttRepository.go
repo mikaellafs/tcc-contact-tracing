@@ -25,7 +25,7 @@ func NewMqttRepository(client mqtt.Client) *MqttRepository {
 	repo.client = client
 
 	repo.qos = 1
-	repo.userBaseTopic = "user/"
+	repo.userBaseTopic = "notification/"
 
 	return repo
 }
@@ -35,14 +35,15 @@ func (r *MqttRepository) PublishNotification(user string, notification dto.Notif
 	notificationStr := string(notificationJSON)
 	log.Println(mqttRepositoryLog, "Publish notification to user", user, "-", notificationStr)
 
-	token := r.client.Publish(r.userBaseTopic+user, r.qos, false, notificationStr)
+	topic := r.userBaseTopic + user
+	token := r.client.Publish(topic, r.qos, true, notificationStr)
 
 	if token.Wait() && token.Error() != nil {
 		log.Println(mqttRepositoryLog, token.Error().Error())
 		return token.Error()
 	}
 
-	log.Println(mqttRepositoryLog, "Notification sent successfully")
+	log.Println(mqttRepositoryLog, "Notification sent successfully to topic:", topic)
 	return nil
 }
 
@@ -50,7 +51,11 @@ func (r *MqttRepository) SubscribeToReceiveContacts(topic string, processContact
 	log.Println(mqttRepositoryLog, "Subscribe to topic", topic, "and receive contacts")
 	handler := func(c mqtt.Client, m mqtt.Message) {
 		var contactMessage dto.ContactMessage
-		json.Unmarshal(m.Payload(), &contactMessage)
+		err := json.Unmarshal(m.Payload(), &contactMessage)
+		if err != nil {
+			log.Println(mqttRepositoryLog, "Failed to unmarshal message from contacts topic:", err.Error())
+			return
+		}
 
 		processContacts(contactMessage)
 	}

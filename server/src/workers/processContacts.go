@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"log"
 	"time"
@@ -34,6 +35,7 @@ func NewContactsProcessor(
 	processor := new(ContactsProcessor)
 	processor.contactRepository = contactRepository
 	processor.userRepository = userRepository
+	processor.cacheRepository = cacheRepository
 	processor.potentialRiskChan = potentialRiskChan
 	processor.maxTimeDiffToConsiderAtRisk = maxDiffDaysFromDiagnosticToConsiderAtRisk * time.Hour * 24
 
@@ -41,7 +43,7 @@ func NewContactsProcessor(
 }
 
 func (p *ContactsProcessor) Process(contact dto.ContactMessage) {
-	log.Println(contactsProcessorLog, "Processing contact from user", contact.User, ", info:", string(contact.Contact))
+	log.Println(contactsProcessorLog, "Processing contact from user", contact.User, ", info:", contact.Contact)
 
 	// Validate message
 	err := p.validateMessage(contact)
@@ -50,21 +52,14 @@ func (p *ContactsProcessor) Process(contact dto.ContactMessage) {
 		return
 	}
 
-	// Parse contact to ContactMessage
-	contactFromMsg := contact.ParseContact()
-	if contactFromMsg == nil {
-		log.Println(contactsProcessorLog, "Could not process message: invalid contact format")
-		return
-	}
-
 	// Save contact in db
-	p.saveContact(contact.User, contactFromMsg)
+	p.saveContact(contact.User, &contact.Contact)
 
 	// Verify if user contacted has reported covid in the last 15 days
-	reports := p.cacheRepository.GetReportsFrom(contactFromMsg.User)
+	reports := p.cacheRepository.GetReportsFrom(contact.Contact.User)
 
 	for _, report := range reports {
-		p.checkAndProcessUserRisk(contactFromMsg, report)
+		p.checkAndProcessUserRisk(&contact.Contact, report)
 	}
 }
 
@@ -76,7 +71,8 @@ func (p *ContactsProcessor) validateMessage(contact dto.ContactMessage) error {
 	}
 
 	// Validate message
-	isValid, err := utils.ValidateMessage(string(contact.Contact), user.Pk, contact.Signature)
+	sig, _ := hex.DecodeString(contact.Signature)
+	isValid, err := utils.ValidateMessage(contact.Contact, user.Pk, sig)
 	if err != nil {
 		return errors.New("Error when validating message: " + err.Error())
 	}
@@ -103,6 +99,7 @@ func (p *ContactsProcessor) saveContact(userId string, contact *dto.ContactFromM
 
 	// If some error ocurred...
 	if err != nil {
+		log.Println(contactsProcessorLog, err.Error())
 		// TODO: try again later?
 	}
 }

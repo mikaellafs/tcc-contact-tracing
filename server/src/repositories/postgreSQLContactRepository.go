@@ -12,7 +12,7 @@ import (
 
 const (
 	contactRepositoryLog                 = "[Contact Repository]"
-	minDistance                          = 2
+	minDistance                          = 200 //cm
 	maxDiffTimeToConsiderConstantContact = 20 * time.Minute
 )
 
@@ -57,8 +57,10 @@ func (r *PostgreSQLContactRepository) Create(ctx context.Context, contact db.Con
 		RETURNING id`,
 		contact.User, contact.AnotherUser, contact.FirstContactTimestamp, contact.LastContactTimestamp,
 		contact.Distance, contact.RSSI, contact.BatteryLevel).Scan(&id)
-
-	err = parsePostgreSQLError(err)
+	
+	if err != nil {
+		err = parsePostgreSQLError(err)
+	}
 
 	contact.ID = id
 	return &contact, err

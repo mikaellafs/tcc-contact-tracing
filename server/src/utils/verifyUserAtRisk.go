@@ -8,5 +8,5 @@ func VerifyUserAtRisk(dateContact, dateDiagnostic time.Time, distance float32, m
 		diff = -diff
 	}
 
-	return diff < maxTimeDiffToConsiderAtRisk && distance <= 2
+	return diff < maxTimeDiffToConsiderAtRisk && distance <= 200
 }

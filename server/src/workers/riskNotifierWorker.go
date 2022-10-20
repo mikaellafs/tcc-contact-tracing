@@ -120,7 +120,7 @@ func (w *RiskNotifierWorker) makeUserNotificationMessage(notification dto.Notifi
 		Risk: true,
 		Message: "Você esteve em contato com uma pessoa diagnosticada com covid-19 nos últimos " +
 			strconv.Itoa(w.daysTraced) + " dias." +
-			"Siga as recomendações de saúde. Notificado(a) em " + date.Format(time.RFC822),
+			" Siga as recomendações de saúde. Notificado(a) em " + date.Format(time.RFC822),
 		Date:         date,
 		AmountPeople: 1,
 	}

@@ -51,7 +51,9 @@ func (r *PostGreSQLUserRepository) Create(ctx context.Context, user db.User) (*d
 		RETURNING id`,
 		user.UserId, user.Pk, user.Password).Scan(&id)
 
-	err = parsePostgreSQLError(err)
+	if err != nil {
+		err = parsePostgreSQLError(err)
+	}
 
 	user.ID = id
 	return &user, err

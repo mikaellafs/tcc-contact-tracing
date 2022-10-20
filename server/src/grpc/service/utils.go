@@ -1,6 +1,7 @@
 package service
 
 import (
+	"contacttracing/src/grpc/pb"
 	"contacttracing/src/models/dto"
 	"contacttracing/src/utils"
 	"errors"
@@ -24,4 +25,13 @@ func validateGrpcMessage(request any, pk string, signature []byte) (dto.GrpcResu
 	}
 
 	return result, nil
+}
+
+func parseGrpcReport(report *pb.Report) dto.GrpcReport {
+	return dto.GrpcReport{
+		UserId:            report.GetUserId(),
+		DateStartSymptoms: report.GetDateStartSymptoms().AsTime().UnixMilli(),
+		DateDiagnostic:    report.GetDateDiagnostic().AsTime().UnixMilli(),
+		DateReport:        report.GetDateReport().AsTime().UnixMilli(),
+	}
 }
