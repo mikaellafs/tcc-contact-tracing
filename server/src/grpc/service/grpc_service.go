@@ -10,6 +10,8 @@ import (
 	"contacttracing/src/models/db"
 	"contacttracing/src/models/dto"
 	"contacttracing/src/workers"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -18,6 +20,7 @@ const (
 )
 
 type GrpcService struct {
+	pb.UnimplementedContactTracingServer
 	userRepo       interfaces.UserRepository
 	reportRepo     interfaces.ReportRepository
 	cache          interfaces.CacheRepository
@@ -35,24 +38,22 @@ func NewGrpcService(
 
 func (s GrpcService) Register(ctx context.Context, request *pb.RegisterRequest) (*pb.RegisterResult, error) {
 	result := &pb.RegisterResult{
-		Status:   http.StatusOK,
-		ServerPk: "ok",
+		Status: http.StatusOK,
 	}
 
-	// Validate message
-	r, err := validateGrpcMessage(request.GetRegister(), request.GetRegister().GetPk(), request.GetSignature())
-	if err != nil {
-		result.Status = r.Status
-		result.Message = r.Message
-		log.Println(registerLog, err.Error())
+	// Check params
+	if request.GetDeviceId() == "" || request.GetPk() == "" {
+		result.Status = http.StatusBadRequest
+		result.Message = "Missing deviceId or public key"
+		log.Println(registerLog, result.Message)
 		return result, nil
 	}
 
 	// Save new user
 	user := db.User{
-		UserId:   request.GetRegister().GetUserId(),
-		Pk:       request.GetRegister().GetPk(),
-		Password: request.GetRegister().GetPassword(),
+		Id:       uuid.New().String(),
+		DeviceId: request.GetDeviceId(),
+		Pk:       request.GetPk(),
 	}
 
 	userSaved, err := s.userRepo.Create(context.TODO(), user)
@@ -64,6 +65,7 @@ func (s GrpcService) Register(ctx context.Context, request *pb.RegisterRequest) 
 	}
 
 	log.Println(registerLog, userSaved)
+	result.UserId = userSaved.Id
 
 	return result, nil
 }

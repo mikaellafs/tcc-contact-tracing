@@ -1,8 +1,7 @@
 package db
 
 type User struct {
-	ID       int64
-	UserId   string
+	Id       string
+	DeviceId string
 	Pk       string
-	Password string
 }
