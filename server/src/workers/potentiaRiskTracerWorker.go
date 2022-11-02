@@ -16,19 +16,23 @@ const (
 )
 
 type PotentialRiskTracerWorker struct {
-	contactRepo interfaces.ContactRepository
-	reportRepo  interfaces.ReportRepository
-	cacheRepo   interfaces.CacheRepository
+	contactRepo            interfaces.ContactRepository
+	reportRepo             interfaces.ReportRepository
+	cacheRepo              interfaces.CacheRepository
+	riskContactMinDuration time.Duration
 }
 
 func NewPotentialRiskTracerWorker(
 	contactRepo interfaces.ContactRepository,
 	reportRepo interfaces.ReportRepository,
-	cacheRepo interfaces.CacheRepository) *PotentialRiskTracerWorker {
+	cacheRepo interfaces.CacheRepository,
+	riskContactMinDuration time.Duration) *PotentialRiskTracerWorker {
+
 	worker := new(PotentialRiskTracerWorker)
 	worker.contactRepo = contactRepo
 	worker.reportRepo = reportRepo
 	worker.cacheRepo = cacheRepo
+	worker.riskContactMinDuration = riskContactMinDuration
 
 	return worker
 }
@@ -61,8 +65,13 @@ func (w *PotentialRiskTracerWorker) Work(potentialRisks chan dto.PotentialRiskJo
 		// Get longest contact
 		longestContact := utils.GetLongestContact(contacts)
 
-		// Notify about contact
-		go AddNotificationJob(longestContact.DateLastContact, job.User, job.ReportId, longestContact.Duration, notifications)
+		// Check contact duration to notify
+		if longestContact.Duration >= w.riskContactMinDuration {
+			log.Println(potentialRiskTracerWorkerLog, "Risky contact with duration of", w.riskContactMinDuration, "minutes.")
+
+			// Notify about contact
+			go AddNotificationJob(longestContact.DateLastContact, job.User, job.ReportId, longestContact.Duration, notifications)
+		}
 
 		// Remove potential risk job from cache
 		w.cacheRepo.RemovePotentialRiskJob(job.User, job.ReportId)
@@ -96,6 +105,7 @@ func AddPotentialRiskJob(user string, reportId int64, channel chan<- dto.Potenti
 		Attempts: 0,
 	}
 
+	// Check if there's already a job scheduled
 	isThereAJob := cache.GetPotentialRiskJob(user, reportId)
 	if isThereAJob {
 		log.Println(potentialRiskTracerWorkerLog, "There's already a potential risk job for user:", user)
@@ -105,6 +115,7 @@ func AddPotentialRiskJob(user string, reportId int64, channel chan<- dto.Potenti
 	log.Println(potentialRiskTracerWorkerLog, "Schedule new potential risk job")
 	cache.SavePotentialRiskJob(user, reportId)
 
+	// Scheudle job
 	time.AfterFunc(scheduleRiskJobTime, func() {
 		log.Println(potentialRiskTracerWorkerLog, "Add potential risk job:", job)
 		channel <- job

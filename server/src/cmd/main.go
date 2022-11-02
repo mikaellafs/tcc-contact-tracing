@@ -23,6 +23,7 @@ const (
 	maxDiffDaysFromDiagnosticToConsiderAtRisk = 15
 	contactsTopic                             = "contact"
 	reportExpiration                          = 15 * time.Hour * 24 // 15 days
+	minContactDuration                        = 15 * time.Minute
 )
 
 var (
@@ -119,9 +120,9 @@ func initWorkers() {
 	potentialRiskChan = make(chan dto.PotentialRiskJob, 50)
 	cleanNotifChannel = make(chan dto.CleanNotificationJob, 50)
 
-	go workers.NewContacTracerWorker(contactRepo, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(reportChan, notifChan, cleanNotifChannel)
-	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, mqttRepo, 5*time.Minute, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(notifChan)
-	go workers.NewPotentialRiskTracerWorker(contactRepo, reportRepo, cacheRepo).Work(potentialRiskChan, notifChan)
+	go workers.NewContacTracerWorker(contactRepo, maxDiffDaysFromDiagnosticToConsiderAtRisk, minContactDuration).Work(reportChan, notifChan, cleanNotifChannel)
+	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, mqttRepo, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(notifChan)
+	go workers.NewPotentialRiskTracerWorker(contactRepo, reportRepo, cacheRepo, minContactDuration).Work(potentialRiskChan, notifChan)
 	go workers.NewRiskNotificationCleanerWorker(cacheRepo, mqttRepo, reportExpiration).Work(cleanNotifChannel)
 }
 

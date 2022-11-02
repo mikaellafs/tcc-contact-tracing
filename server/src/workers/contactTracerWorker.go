@@ -15,12 +15,13 @@ const (
 )
 
 type ContactTracerWorker struct {
-	contactRepo interfaces.ContactRepository
-	daysToTrace int
+	contactRepo            interfaces.ContactRepository
+	daysToTrace            int
+	riskContactMinDuration time.Duration
 }
 
-func NewContacTracerWorker(repo interfaces.ContactRepository, days int) *ContactTracerWorker {
-	return &ContactTracerWorker{contactRepo: repo, daysToTrace: days}
+func NewContacTracerWorker(repo interfaces.ContactRepository, days int, riskContactMinDuration time.Duration) *ContactTracerWorker {
+	return &ContactTracerWorker{contactRepo: repo, daysToTrace: days, riskContactMinDuration: riskContactMinDuration}
 }
 
 func (w *ContactTracerWorker) Work(reports chan dto.ReportJob,
@@ -73,6 +74,12 @@ func (w *ContactTracerWorker) pushReportBack(reports chan<- dto.ReportJob, repor
 func (w *ContactTracerWorker) notifyContacts(contacts []dto.Contact, report dto.ReportJob, channel chan<- dto.NotificationJob) {
 	for _, contact := range contacts {
 		log.Println(contactTracerWorkerLog, "Contato com:", contact.AnotherUser, "por", contact.Duration.Minutes(), "minutos")
+
+		// Check contact duration: discard if it was too short
+		if contact.Duration < w.riskContactMinDuration {
+			log.Println(contactTracerWorkerLog, "Contact last less than", w.riskContactMinDuration, "minutes. User is not going to get notified")
+			continue
+		}
 
 		AddNotificationJob(contact.DateLastContact, contact.AnotherUser, report.DBID, contact.Duration, channel)
 	}
