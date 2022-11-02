@@ -31,8 +31,8 @@ func (r *PostgreSQLContactRepository) Migrate(ctx context.Context) error {
 	query := `
     CREATE TABLE IF NOT EXISTS contacts(
 		id SERIAL PRIMARY KEY,
-		userId TEXT NOT NULL,
-		anotherUser TEXT NOT NULL,
+		userId VARCHAR(36) NOT NULL,
+		anotherUser VARCHAR(36) NOT NULL,
         firstContactTimestamp TIMESTAMP WITH TIME ZONE NOT NULL,
 		lastContactTimestamp TIMESTAMP WITH TIME ZONE NOT NULL,
 		distance FLOAT(4) NOT NULL,
@@ -57,7 +57,7 @@ func (r *PostgreSQLContactRepository) Create(ctx context.Context, contact db.Con
 		RETURNING id`,
 		contact.User, contact.AnotherUser, contact.FirstContactTimestamp, contact.LastContactTimestamp,
 		contact.Distance, contact.RSSI, contact.BatteryLevel).Scan(&id)
-	
+
 	if err != nil {
 		err = parsePostgreSQLError(err)
 	}

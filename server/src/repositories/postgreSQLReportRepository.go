@@ -28,7 +28,7 @@ func (r *PostgreSQLReportRepository) Migrate(ctx context.Context) error {
 	query := `
     CREATE TABLE IF NOT EXISTS reports(
 		id SERIAL PRIMARY KEY,
-        userId TEXT NOT NULL,
+        userId VARCHAR(36) NOT NULL,
         dateStart TIMESTAMP WITH TIME ZONE NOT NULL,
         dateDiagnostic TIMESTAMP WITH TIME ZONE NOT NULL,
 		dateReport TIMESTAMP WITH TIME ZONE NOT NULL,
