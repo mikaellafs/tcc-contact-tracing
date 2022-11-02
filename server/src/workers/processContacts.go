@@ -55,11 +55,16 @@ func (p *ContactsProcessor) Process(contact dto.ContactMessage) {
 	// Save contact in db
 	p.saveContact(contact.User, &contact.Contact)
 
-	// Verify if user contacted has reported covid in the last 15 days
-	reports := p.cacheRepository.GetReportsFrom(contact.Contact.User)
-
+	// Verify if current user is infected (who send this message)
+	reports := p.cacheRepository.GetReportsFrom(contact.User)
 	for _, report := range reports {
-		p.checkAndProcessUserRisk(&contact.Contact, report)
+		p.checkAndProcessUserRisk(&contact.Contact, report, contact.User)
+	}
+
+	// Verify if user contacted has reported covid in the last 15 days
+	reports = p.cacheRepository.GetReportsFrom(contact.Contact.User)
+	for _, report := range reports {
+		p.checkAndProcessUserRisk(&contact.Contact, report, contact.Contact.User)
 	}
 }
 
@@ -104,14 +109,14 @@ func (p *ContactsProcessor) saveContact(userId string, contact *dto.ContactFromM
 	}
 }
 
-func (p *ContactsProcessor) checkAndProcessUserRisk(contact *dto.ContactFromMessage, report dto.Report) {
+func (p *ContactsProcessor) checkAndProcessUserRisk(contact *dto.ContactFromMessage, report dto.Report, atRiskUser string) {
 	isAtRisk := utils.VerifyUserAtRisk(time.UnixMilli(contact.LastContactTimestamp), report.DateDiagnostic, contact.Distance, p.maxTimeDiffToConsiderAtRisk)
 
 	if !isAtRisk {
-		log.Println(contactsProcessorLog, "User", contact.User, "is NOT at risk for now")
+		log.Println(contactsProcessorLog, "User", atRiskUser, "is NOT at risk for now")
 		return
 	}
 
-	log.Println(contactsProcessorLog, "User", contact.User, "is in contact with infected user", contact.User)
+	log.Println(contactsProcessorLog, "User", atRiskUser, "is in contact with infected user")
 	AddPotentialRiskJob(contact.User, report.ID, p.potentialRiskChan, p.cacheRepository)
 }
