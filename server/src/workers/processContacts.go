@@ -117,6 +117,12 @@ func (p *ContactsProcessor) checkAndProcessUserRisk(contact *dto.ContactFromMess
 		return
 	}
 
+	// Check if user has been notified to avoid a new tracing
+	cacheNotification := p.cacheRepository.GetNotificationFrom(atRiskUser, report.ID)
+	if cacheNotification == nil {
+		log.Println(contactsProcessorLog, "User", atRiskUser, "is in contact with infected user but they already have been notified")
+	}
+
 	log.Println(contactsProcessorLog, "User", atRiskUser, "is in contact with infected user")
 	AddPotentialRiskJob(contact.User, report.ID, p.potentialRiskChan, p.cacheRepository)
 }
