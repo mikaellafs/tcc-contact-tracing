@@ -21,7 +21,7 @@ import (
 
 const (
 	maxDiffDaysFromDiagnosticToConsiderAtRisk = 15
-	contactsTopic                             = "contact"
+	contactsTopic                             = "contato"
 	reportExpiration                          = 15 * time.Hour * 24 // 15 days
 	minContactDuration                        = 15 * time.Minute
 )
