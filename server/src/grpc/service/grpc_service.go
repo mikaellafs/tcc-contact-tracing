@@ -9,6 +9,7 @@ import (
 	"contacttracing/src/interfaces"
 	"contacttracing/src/models/db"
 	"contacttracing/src/models/dto"
+	"contacttracing/src/utils"
 	"contacttracing/src/workers"
 
 	"github.com/google/uuid"
@@ -49,10 +50,13 @@ func (s GrpcService) Register(ctx context.Context, request *pb.RegisterRequest) 
 		return result, nil
 	}
 
+	// Encrypt deviceId
+	deviceId := utils.EncryptStr(request.GetDeviceId())
+
 	// Save new user
 	user := db.User{
 		Id:       uuid.New().String(),
-		DeviceId: request.GetDeviceId(),
+		DeviceId: deviceId,
 		Pk:       request.GetPk(),
 	}
 

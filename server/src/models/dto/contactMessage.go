@@ -7,7 +7,7 @@ type ContactMessage struct {
 }
 
 type ContactFromMessage struct {
-	User                  string  `json:"token"`
+	User                  string  `json:"otherUser"`
 	FirstContactTimestamp int64   `json:"firstContactTimestamp"` // milliseconds
 	LastContactTimestamp  int64   `json:"lastContactTimestamp"`  // milliseconds
 	Distance              float32 `json:"distance"`
