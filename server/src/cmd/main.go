@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"contacttracing/src/clients"
@@ -52,6 +54,9 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
+
+	f := logsToFile()
+	defer f.Close()
 
 	initClients()
 	defer closeClients()
@@ -135,4 +140,18 @@ func initServer() {
 	grpcService := service.NewGrpcService(userRepo, reportRepo, cacheRepo, reportChan)
 	s := server.NewGrpcCServer(grpcService)
 	s.Serve()
+}
+
+func logsToFile() *os.File {
+	file := os.Getenv("LOGFILE_PATH")
+	fmt.Println("File to save logs:", os.Getenv("LOGFILE_PATH"))
+
+	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+
+	log.SetOutput(f)
+
+	return f
 }
