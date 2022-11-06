@@ -7,3 +7,6 @@ cache
 
 # emqx broker
 tmp
+
+# logs file
+logs.txt
