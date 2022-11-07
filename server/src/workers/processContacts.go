@@ -58,13 +58,13 @@ func (p *ContactsProcessor) Process(contact dto.ContactMessage) {
 	// Verify if current user is infected (who send this message)
 	reports := p.cacheRepository.GetReportsFrom(contact.User)
 	for _, report := range reports {
-		p.checkAndProcessUserRisk(&contact.Contact, report, contact.User)
+		p.checkAndProcessUserRisk(&contact.Contact, report, contact.Contact.User)
 	}
 
 	// Verify if user contacted has reported covid in the last 15 days
 	reports = p.cacheRepository.GetReportsFrom(contact.Contact.User)
 	for _, report := range reports {
-		p.checkAndProcessUserRisk(&contact.Contact, report, contact.Contact.User)
+		p.checkAndProcessUserRisk(&contact.Contact, report, contact.User)
 	}
 }
 
@@ -119,10 +119,11 @@ func (p *ContactsProcessor) checkAndProcessUserRisk(contact *dto.ContactFromMess
 
 	// Check if user has been notified to avoid a new tracing
 	cacheNotification := p.cacheRepository.GetNotificationFrom(atRiskUser, report.ID)
-	if cacheNotification == nil {
+	if cacheNotification != nil {
 		log.Println(contactsProcessorLog, "User", atRiskUser, "is in contact with infected user but they already have been notified")
+		return
 	}
 
 	log.Println(contactsProcessorLog, "User", atRiskUser, "is in contact with infected user")
-	AddPotentialRiskJob(contact.User, report.ID, p.potentialRiskChan, p.cacheRepository)
+	AddPotentialRiskJob(atRiskUser, report.ID, p.potentialRiskChan, p.cacheRepository)
 }
