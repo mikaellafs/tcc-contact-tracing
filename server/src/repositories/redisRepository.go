@@ -138,6 +138,25 @@ func (r *RedisRepository) RemovePotentialRiskJob(userId string, reportId int64) 
 	r.client.Del(key)
 }
 
+func (r *RedisRepository) UserHasReportedRecently(userId string) bool {
+	key := r.makeHasReportKey(userId)
+	_, err := r.client.Get(key).Result()
+
+	log.Println(cacheRepositoryLog, "Has user", userId, "reported recently?", err == nil)
+	return err == nil
+}
+
+func (r *RedisRepository) SaveUserHasReportedRecently(userId string, expiration time.Duration) {
+	log.Println(cacheRepositoryLog, "Save report recently for the next", expiration, "time for user", userId)
+
+	key := r.makeHasReportKey(userId)
+	r.client.Set(key, true, expiration)
+}
+
+func (r *RedisRepository) makeHasReportKey(userId string) string {
+	return "hasReport:" + userId
+}
+
 func (r *RedisRepository) makeReportKey(userId string, reportId int64) string {
 	return "report:" + userId + "#" + strconv.FormatInt(reportId, 10)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"contacttracing/src/grpc/pb"
 	"contacttracing/src/interfaces"
@@ -16,8 +17,9 @@ import (
 )
 
 const (
-	registerLog = "[Register]"
-	reportLog   = "[Report]"
+	registerLog                = "[Register]"
+	reportLog                  = "[Report]"
+	reportedRecentlyExpiration = 12 + time.Hour
 )
 
 type GrpcService struct {
@@ -97,6 +99,14 @@ func (s GrpcService) ReportInfection(ctx context.Context, request *pb.ReportRequ
 		return result, nil
 	}
 
+	// Check if user has reported covid in the past 12h
+	if s.cache.UserHasReportedRecently(request.GetReport().GetUserId()) {
+		result.Status = http.StatusBadRequest
+		result.Message = "Usuário já reportou um diagnóstico positivo nas últimas 12h"
+		log.Println(reportLog, "User has reported recently")
+		return result, nil
+	}
+
 	// Create report in DB
 	report, err := s.reportRepo.Create(context.TODO(), db.Report{
 		UserId:         request.GetReport().GetUserId(),
@@ -113,6 +123,7 @@ func (s GrpcService) ReportInfection(ctx context.Context, request *pb.ReportRequ
 
 	// Save report at risk cache
 	s.cache.SaveReport(report.UserId, report.ID, report.DateDiagnostic)
+	s.cache.SaveUserHasReportedRecently(report.UserId, reportedRecentlyExpiration)
 
 	// Add job to trace contacts
 	go workers.AddReportJob(report.ID, report.UserId, report.DateDiagnostic, s.tracingJobChan)
