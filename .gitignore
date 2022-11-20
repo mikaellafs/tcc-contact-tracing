@@ -10,3 +10,7 @@ tmp
 
 # logs file
 logs.txt
+
+# analytics
+database.ini
+__pycache__
