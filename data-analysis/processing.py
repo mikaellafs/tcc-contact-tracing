@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from sklearn import preprocessing
 
 datetime_format='%Y-%m-%d %H:%M:%S.%f%z'
 datetime_timezone='America/Sao_Paulo'
@@ -26,9 +27,8 @@ def parse_timestamp_types(df):
     df = df.rename(columns = {'userid':'user1', 'anotheruser': 'user2'})
 
     return df
-    
 
-def aggregate_constant_contacts(df, filename=""):
+def aggregate_constant_contacts(df, filename="constant_contacts.csv"):
     """ Aggregate contacts """
 
     # Label constant contacts
@@ -44,7 +44,10 @@ def aggregate_constant_contacts(df, filename=""):
     )
 
     # Calculate duration of contacts
-    d['duration'] = d.apply(lambda x : x['lastcontacttimestamp'] - x['firstcontacttimestamp'], axis=1)
+    d['duration'] = d.apply(lambda x : (x['lastcontacttimestamp'] - x['firstcontacttimestamp']).total_seconds(), axis=1)
+
+    # Save to csv
+    d.to_csv(make_file_path(filename))
 
     return d
 
@@ -111,3 +114,34 @@ def check_constant_contact(df, users, contact):
     df = new_constant_contact_row(df, users, contact, contact_id)
 
     return df
+
+def get_contact_metrics(df, filename="contact_metrics.csv"):
+    # Metrics about contact duration
+    df = df.reset_index().groupby(users_col).agg(
+        total=("contact", "count"),
+        avg_duration=("duration", "mean"),
+        std_duration=("duration", "std"),
+        max_duration=("duration", "max"),
+        min_duration=("duration", "min"),
+
+        avg_distance=("distance", "mean"),
+        std_distance=("distance", "std"),
+        max_distance=("distance", "max"),
+        min_distance=("distance", "min"),
+    )
+
+    # Save metrics to csv
+    df.to_csv(make_file_path(filename))
+
+    return df
+
+def normalize(df):
+    x = df.values #returns a numpy array
+    min_max_scaler = preprocessing.MinMaxScaler()
+    x_scaled = min_max_scaler.fit_transform(x.reshape(-1,1))
+    df = pd.DataFrame(x_scaled)
+
+    return df
+
+def make_file_path(filename):
+    return 'generated/csv/' + filename

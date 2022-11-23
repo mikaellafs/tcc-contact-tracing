@@ -12,4 +12,5 @@
 # conda install -c conda-forge python-igraph
 # conda install -c conda-forge pycairo
 
-conda install -c anaconda scipy
+# conda install -c anaconda scipy
+conda install -c anaconda scikit-learn
