@@ -37,3 +37,17 @@ def select_contacts(cursor):
     query = ("""SELECT userId, anotherUser, firstcontacttimestamp,lastcontacttimestamp, distance 
                 FROM contacts""")
     return pd.read_sql(query, cursor)
+
+def get_from_db():
+    # connect to db
+    conn = db.connect()
+    cursor = conn.cursor()
+
+    # get contacts
+    df = db.select_contacts(cursor)
+
+    # close connection
+    cursor.close()
+    conn.close()
+
+    return df
