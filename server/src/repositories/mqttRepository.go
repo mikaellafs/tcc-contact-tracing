@@ -25,7 +25,7 @@ func NewMqttRepository(client mqtt.Client) *MqttRepository {
 	repo.client = client
 
 	repo.qos = 1
-	repo.userBaseTopic = "notification/"
+	repo.userBaseTopic = "notificacao/"
 
 	return repo
 }

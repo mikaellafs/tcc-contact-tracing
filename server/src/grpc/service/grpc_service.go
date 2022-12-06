@@ -4,20 +4,26 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"contacttracing/src/grpc/pb"
 	"contacttracing/src/interfaces"
 	"contacttracing/src/models/db"
 	"contacttracing/src/models/dto"
+	"contacttracing/src/utils"
 	"contacttracing/src/workers"
+
+	"github.com/google/uuid"
 )
 
 const (
-	registerLog = "[Register]"
-	reportLog   = "[Report]"
+	registerLog                = "[Register]"
+	reportLog                  = "[Report]"
+	reportedRecentlyExpiration = 12 + time.Hour
 )
 
 type GrpcService struct {
+	pb.UnimplementedContactTracingServer
 	userRepo       interfaces.UserRepository
 	reportRepo     interfaces.ReportRepository
 	cache          interfaces.CacheRepository
@@ -35,24 +41,25 @@ func NewGrpcService(
 
 func (s GrpcService) Register(ctx context.Context, request *pb.RegisterRequest) (*pb.RegisterResult, error) {
 	result := &pb.RegisterResult{
-		Status:   http.StatusOK,
-		ServerPk: "ok",
+		Status: http.StatusOK,
 	}
 
-	// Validate message
-	r, err := validateGrpcMessage(request.GetRegister(), request.GetRegister().GetPk(), request.GetSignature())
-	if err != nil {
-		result.Status = r.Status
-		result.Message = r.Message
-		log.Println(registerLog, err.Error())
+	// Check params
+	if request.GetDeviceId() == "" || request.GetPk() == "" {
+		result.Status = http.StatusBadRequest
+		result.Message = "Missing deviceId or public key"
+		log.Println(registerLog, result.Message)
 		return result, nil
 	}
 
+	// Encrypt deviceId
+	deviceId := utils.EncryptStr(request.GetDeviceId())
+
 	// Save new user
 	user := db.User{
-		UserId:   request.GetRegister().GetUserId(),
-		Pk:       request.GetRegister().GetPk(),
-		Password: request.GetRegister().GetPassword(),
+		Id:       uuid.New().String(),
+		DeviceId: deviceId,
+		Pk:       request.GetPk(),
 	}
 
 	userSaved, err := s.userRepo.Create(context.TODO(), user)
@@ -64,6 +71,7 @@ func (s GrpcService) Register(ctx context.Context, request *pb.RegisterRequest) 
 	}
 
 	log.Println(registerLog, userSaved)
+	result.UserId = userSaved.Id
 
 	return result, nil
 }
@@ -91,6 +99,14 @@ func (s GrpcService) ReportInfection(ctx context.Context, request *pb.ReportRequ
 		return result, nil
 	}
 
+	// Check if user has reported covid in the past 12h
+	if s.cache.UserHasReportedRecently(request.GetReport().GetUserId()) {
+		result.Status = http.StatusBadRequest
+		result.Message = "Usuário já reportou um diagnóstico positivo nas últimas 12h"
+		log.Println(reportLog, "User has reported recently")
+		return result, nil
+	}
+
 	// Create report in DB
 	report, err := s.reportRepo.Create(context.TODO(), db.Report{
 		UserId:         request.GetReport().GetUserId(),
@@ -107,6 +123,7 @@ func (s GrpcService) ReportInfection(ctx context.Context, request *pb.ReportRequ
 
 	// Save report at risk cache
 	s.cache.SaveReport(report.UserId, report.ID, report.DateDiagnostic)
+	s.cache.SaveUserHasReportedRecently(report.UserId, reportedRecentlyExpiration)
 
 	// Add job to trace contacts
 	go workers.AddReportJob(report.ID, report.UserId, report.DateDiagnostic, s.tracingJobChan)

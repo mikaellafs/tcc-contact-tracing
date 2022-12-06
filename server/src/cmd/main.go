@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"contacttracing/src/clients"
@@ -21,8 +23,9 @@ import (
 
 const (
 	maxDiffDaysFromDiagnosticToConsiderAtRisk = 15
-	contactsTopic                             = "contact"
+	contactsTopic                             = "contato"
 	reportExpiration                          = 15 * time.Hour * 24 // 15 days
+	minContactDuration                        = 15 * time.Minute
 )
 
 var (
@@ -51,6 +54,9 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
+
+	f := logsToFile()
+	defer f.Close()
 
 	initClients()
 	defer closeClients()
@@ -119,9 +125,9 @@ func initWorkers() {
 	potentialRiskChan = make(chan dto.PotentialRiskJob, 50)
 	cleanNotifChannel = make(chan dto.CleanNotificationJob, 50)
 
-	go workers.NewContacTracerWorker(contactRepo, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(reportChan, notifChan, cleanNotifChannel)
-	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, mqttRepo, 5*time.Minute, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(notifChan)
-	go workers.NewPotentialRiskTracerWorker(contactRepo, reportRepo, cacheRepo).Work(potentialRiskChan, notifChan)
+	go workers.NewContacTracerWorker(contactRepo, maxDiffDaysFromDiagnosticToConsiderAtRisk, minContactDuration).Work(reportChan, notifChan, cleanNotifChannel)
+	go workers.NewRiskNotifierWorker(notificationRepo, cacheRepo, mqttRepo, maxDiffDaysFromDiagnosticToConsiderAtRisk).Work(notifChan)
+	go workers.NewPotentialRiskTracerWorker(contactRepo, reportRepo, cacheRepo, minContactDuration).Work(potentialRiskChan, notifChan)
 	go workers.NewRiskNotificationCleanerWorker(cacheRepo, mqttRepo, reportExpiration).Work(cleanNotifChannel)
 }
 
@@ -134,4 +140,18 @@ func initServer() {
 	grpcService := service.NewGrpcService(userRepo, reportRepo, cacheRepo, reportChan)
 	s := server.NewGrpcCServer(grpcService)
 	s.Serve()
+}
+
+func logsToFile() *os.File {
+	file := os.Getenv("LOGFILE_PATH")
+	fmt.Println("File to save logs:", os.Getenv("LOGFILE_PATH"))
+
+	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+
+	log.SetOutput(f)
+
+	return f
 }

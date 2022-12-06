@@ -38,7 +38,7 @@ func (r *RedisRepository) GetReportsFrom(userId string) []dto.Report {
 	log.Println(cacheRepositoryLog, "Get reports from user ", userId)
 
 	prefix := "report:" + userId
-	iter := r.client.Scan(0, "prefix:"+prefix, 0).Iterator()
+	iter := r.client.Scan(0, prefix+"*", 0).Iterator()
 
 	reports := r.parseScanReportsResults(iter)
 
@@ -81,7 +81,7 @@ func (r *RedisRepository) GetNotificationKeysFrom(userId string) []string {
 	log.Println(cacheRepositoryLog, "Get notifications keys from user", userId)
 
 	prefix := "notification:"
-	keys, _, _ := r.client.Scan(0, "prefix:"+prefix, 0).Result()
+	keys, _, _ := r.client.Scan(0, prefix+"*", 0).Result()
 
 	return keys
 }
@@ -91,7 +91,7 @@ func (r *RedisRepository) RemoveNotificationsAfter(days time.Duration, maxDate t
 
 	var expiredNotificationsUserIds []string
 	prefix := "notification:"
-	iter := r.client.Scan(0, "prefix:"+prefix, 0).Iterator()
+	iter := r.client.Scan(0, prefix+"*", 0).Iterator()
 
 	for iter.Next() {
 		key, user, date, err := r.extractNotification(iter.Val())
@@ -138,6 +138,25 @@ func (r *RedisRepository) RemovePotentialRiskJob(userId string, reportId int64) 
 	r.client.Del(key)
 }
 
+func (r *RedisRepository) UserHasReportedRecently(userId string) bool {
+	key := r.makeHasReportKey(userId)
+	_, err := r.client.Get(key).Result()
+
+	log.Println(cacheRepositoryLog, "Has user", userId, "reported recently?", err == nil)
+	return err == nil
+}
+
+func (r *RedisRepository) SaveUserHasReportedRecently(userId string, expiration time.Duration) {
+	log.Println(cacheRepositoryLog, "Save report recently for the next", expiration, "time for user", userId)
+
+	key := r.makeHasReportKey(userId)
+	r.client.Set(key, true, expiration)
+}
+
+func (r *RedisRepository) makeHasReportKey(userId string) string {
+	return "hasReport:" + userId
+}
+
 func (r *RedisRepository) makeReportKey(userId string, reportId int64) string {
 	return "report:" + userId + "#" + strconv.FormatInt(reportId, 10)
 }
@@ -168,15 +187,18 @@ func (r *RedisRepository) parseScanReportsResults(iter *redis.ScanIterator) []dt
 	return reports
 }
 
-func (r *RedisRepository) extractReport(val string) (int64, time.Time, error) {
-	keyField := strings.SplitN(val, "/", 2)
+func (r *RedisRepository) extractReport(key string) (int64, time.Time, error) {
+	value, err := r.client.Get(key).Result()
+	if err != nil {
+		return 0, time.Now(), err
+	}
 
-	t, err := time.Parse(time.RFC3339, keyField[1])
+	t, err := time.Parse(time.RFC3339, value)
 	if err != nil {
 		return 0, t, err
 	}
 
-	reportIdStr := strings.Split(keyField[0], "#")[1]
+	reportIdStr := strings.Split(key, "#")[1]
 	rId, err := strconv.ParseInt(reportIdStr, 10, 64)
 	if err != nil {
 		return 0, t, err
@@ -185,17 +207,19 @@ func (r *RedisRepository) extractReport(val string) (int64, time.Time, error) {
 	return rId, t, nil
 }
 
-// Return userId, reportId and dateNotification
-func (r *RedisRepository) extractNotification(val string) (string, string, time.Time, error) {
-	keyField := strings.SplitN(val, "/", 2)
+func (r *RedisRepository) extractNotification(key string) (string, string, time.Time, error) {
+	value, err := r.client.Get(key).Result()
+	if err != nil {
+		return "", "", time.Now(), err
+	}
 
-	t, err := time.Parse(time.RFC3339, keyField[1])
+	t, err := time.Parse(time.RFC3339, value)
 	if err != nil {
 		return "", "", t, err
 	}
 
-	userId := strings.SplitN(keyField[0], "#", 2)[0]
+	userId := strings.Split(key, "#")[0]
 	userId = strings.ReplaceAll(userId, "notification:", "")
 
-	return keyField[0], userId, t, nil
+	return key, userId, t, nil
 }

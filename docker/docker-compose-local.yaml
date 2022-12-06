@@ -1,0 +1,68 @@
+version: '3.7'
+
+services:
+  database:
+    container_name: pg-database
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ufes-pg-mikaella
+      POSTGRES_DB: contact_tracing
+    volumes:
+      - ../db-data/:/var/lib/postgresql/data/
+    networks:
+      - postgres-network
+      
+  pgadmin:
+    container_name: pg-database-admin
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "mikaellaferreira0@gmail.com"
+      PGADMIN_DEFAULT_PASSWORD: "ufes-pg-mikaella"
+    ports:
+      - "6543:80"
+    depends_on:
+      - database
+    networks:
+      - postgres-network
+  
+  cache:
+    container_name: pg-cache
+    image: redis:6.2-alpine
+    ports:
+      - '6379:6379'
+    command: redis-server --loglevel warning --requirepass "ufes-pg-mikaella" --appendonly yes
+    volumes: 
+      - ../cache:/data
+  
+  emqx1:
+    container_name: pg-emqx-node1
+    image: emqx/emqx:4.3.0
+    environment:
+      - "EMQX_NAME=emqx"
+      - "EMQX_HOST=node1.emqx"
+      - "EMQX_DASHBOARD__DEFAULT_USER__PASSWORD=ufes-pg-mikaella"
+      - "EMQX_DASHBOARD__DEFAULT_USER__LOGIN=admin"
+      - "EMQX_AUTH__USER__1__USERNAME=client"
+      - "EMQX_AUTH__USER__1__PASSWORD=ufes-pg-mikaella"
+      - "EMQX_LOADED_PLUGINS=emqx_dashboard"
+    volumes:
+      - ../tmp/emqx.lic:/opt/emqx/etc/emqx.lic
+    ports:
+      - 18083:18083 # dashboard
+      - 18084:18084
+      - 1883:1883
+      - 8883:8883
+      - 8083:8083
+      - 8084:8084
+      - 8085:8081
+    networks:
+      - emqx-network
+      
+networks: 
+  postgres-network:
+    driver: bridge
+  emqx-network:
+    driver: bridge

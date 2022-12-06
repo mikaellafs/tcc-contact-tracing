@@ -28,7 +28,7 @@ func (r *PostgreSQLNotificationRepository) Migrate(ctx context.Context) error {
 	query := `
     CREATE TABLE IF NOT EXISTS notifications(
 		id SERIAL PRIMARY KEY,
-		userId TEXT NOT NULL,
+		userId VARCHAR(36) NOT NULL,
 		report INT NOT NULL,
         date TIMESTAMP WITH TIME ZONE NOT NULL,
 		UNIQUE(userId,report),

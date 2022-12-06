@@ -19,24 +19,21 @@ const (
 )
 
 type RiskNotifierWorker struct {
-	cacheRepository        interfaces.CacheRepository
-	notificationRepo       interfaces.NotificationRepository
-	brokerRepository       interfaces.BrokerRepository
-	riskContactMinDuration time.Duration
-	daysTraced             int
+	cacheRepository  interfaces.CacheRepository
+	notificationRepo interfaces.NotificationRepository
+	brokerRepository interfaces.BrokerRepository
+	daysTraced       int
 }
 
 func NewRiskNotifierWorker(repo interfaces.NotificationRepository,
 	cacheRepository interfaces.CacheRepository,
 	brokerRepository interfaces.BrokerRepository,
-	minContactDuration time.Duration,
 	daysTraced int) *RiskNotifierWorker {
 
 	worker := new(RiskNotifierWorker)
 	worker.notificationRepo = repo
 	worker.cacheRepository = cacheRepository
 	worker.brokerRepository = brokerRepository
-	worker.riskContactMinDuration = minContactDuration
 	worker.daysTraced = daysTraced
 
 	return worker
@@ -47,12 +44,6 @@ func (w *RiskNotifierWorker) Work(notifications chan dto.NotificationJob) {
 	for {
 		// Wait for notification
 		notificationJob := <-notifications
-
-		// Check contact duration: discard if it was too short
-		if notificationJob.Duration < w.riskContactMinDuration {
-			log.Println(riskNotifierWorkerLog, "Contact last less than", w.riskContactMinDuration, "minutes. User is not going to get notified")
-			continue
-		}
 
 		// Check if user has been notified
 		cacheNotification := w.cacheRepository.GetNotificationFrom(notificationJob.ForUser, notificationJob.FromReport)
@@ -120,7 +111,7 @@ func (w *RiskNotifierWorker) makeUserNotificationMessage(notification dto.Notifi
 		Risk: true,
 		Message: "Você esteve em contato com uma pessoa diagnosticada com covid-19 nos últimos " +
 			strconv.Itoa(w.daysTraced) + " dias." +
-			" Siga as recomendações de saúde. Notificado(a) em " + date.Format(time.RFC822),
+			" Siga as recomendações de saúde. Notificado(a) em " + date.In(time.FixedZone("UTC-3", -3*60*60)).Format(time.RFC822),
 		Date:         date,
 		AmountPeople: 1,
 	}

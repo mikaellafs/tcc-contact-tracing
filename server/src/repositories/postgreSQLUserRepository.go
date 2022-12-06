@@ -27,10 +27,9 @@ func (r *PostGreSQLUserRepository) Migrate(ctx context.Context) error {
 
 	query := `
     CREATE TABLE IF NOT EXISTS users(
-        id SERIAL PRIMARY KEY,
-        userId TEXT NOT NULL UNIQUE,
-        pk TEXT NOT NULL,
-        password TEXT NOT NULL
+        deviceId VARCHAR(100) PRIMARY KEY,
+		userId VARCHAR(36) UNIQUE,
+        pk TEXT NOT NULL
     );
     `
 
@@ -41,21 +40,20 @@ func (r *PostGreSQLUserRepository) Migrate(ctx context.Context) error {
 func (r *PostGreSQLUserRepository) Create(ctx context.Context, user db.User) (*db.User, error) {
 	log.Println(userRepositoryLog, "Create user: ", user)
 
-	var id int64
+	var id string
 	err := r.db.QueryRowContext(ctx,
-		`INSERT INTO users(userId, pk, password) VALUES($1, $2, $3)
-		ON CONFLICT(userId)
+		`INSERT INTO users(deviceId, userId, pk) VALUES($1, $2, $3)
+		ON CONFLICT(deviceId)
 		DO UPDATE SET
-			pk = $2
-		WHERE users.password = $3
-		RETURNING id`,
-		user.UserId, user.Pk, user.Password).Scan(&id)
+			pk = $3
+		RETURNING userId`,
+		user.DeviceId, user.Id, user.Pk).Scan(&id)
 
 	if err != nil {
 		err = parsePostgreSQLError(err)
 	}
 
-	user.ID = id
+	user.Id = id
 	return &user, err
 }
 
@@ -65,7 +63,7 @@ func (r *PostGreSQLUserRepository) GetByUserId(ctx context.Context, userId strin
 	row := r.db.QueryRowContext(ctx, "SELECT * FROM users WHERE userId = $1", userId)
 
 	var user db.User
-	if err := row.Scan(&user.ID, &user.UserId, &user.Pk, &user.Password); err != nil {
+	if err := row.Scan(&user.DeviceId, &user.Id, &user.Pk); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotExist
 		}

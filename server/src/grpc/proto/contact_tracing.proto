@@ -12,14 +12,8 @@ service ContactTracing {
 }
 
 message RegisterRequest {
-    Register register = 1;
-    bytes signature = 2;
-}
-
-message Register {
-    string userId = 1;
-    string pk = 2;
-    string password = 3;
+    string pk = 1;
+    string deviceId = 2;
 }
 
 message ReportRequest {
@@ -37,7 +31,7 @@ message Report {
 message RegisterResult {
   int32 status = 1;
   string message = 2;
-  string serverPk = 3;
+  string userId = 3;
 }
 
 message ReportResult {
