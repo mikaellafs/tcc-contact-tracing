@@ -1,29 +1,31 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 
-min_duration_risky=15*60 # 15 minutes
+min_duration_risky=15 # 15 minutes
 min_distance_risky=200 # 2 meters
 
-# TODO: CONSIDER BOTH DIRECTIONS OR GET THE GREATEST ONE
 def build_graph_from_df(data, weight_name, args, isMulti=False):
-    """ Build graph from dataframe (user1, user2, weight)"""
+    """ Build graph from dataframe (user1, user2, ..)"""
     if isMulti:
         G = nx.MultiDiGraph()
     else:
         G = nx.Graph()
 
     for _, contact in data.iterrows():
-        if not isMulti and (G.has_edge(contact["user1"], contact["user2"]) or G.has_edge(contact["user2"], contact["user1"])):
+        edge = (contact["user2"], contact["user1"])
+        if not isMulti and G.has_edge(*edge) and G.get_edge_data(*edge)["data"]["total"] < contact["total"]:
+            G.add_edge(*edge, weight=contact[weight_name], data=contact[args].to_dict())
             continue
         
         G.add_edge(contact["user1"], contact["user2"], weight=contact[weight_name], data=contact[args].to_dict())
     
     return G
 
-def draw(G, labels=False, filename='graph5.png'):
+def draw(G, title="", pos=None, labels=False, filename='graph5.png'):
     """ Draw a graph """
     # Compute position of nodes
-    pos = nx.spring_layout(G, k=10, seed=5)
+    if pos == None:
+        pos = nx.spring_layout(G, k=14, seed=5) # 8 e 5 ficou bão
 
     # Draw nodes and edges
     if labels:
@@ -35,11 +37,16 @@ def draw(G, labels=False, filename='graph5.png'):
         connectionstyle='arc3, rad=0.2'
     )
 
-    plt.savefig(make_file_path(filename))
+    plt.title(title)
+    plt.axis ('off')
+    plt.savefig(make_file_path(filename), bbox_inches = 'tight')
     plt.show()
 
-def draw_with_weights(G, elarge, esmall, labels=False, filename='wgraph.png'):
-    pos = nx.spring_layout(G, k=10, seed=5)
+    return pos
+
+def draw_with_weights(G, elarge, esmall, title="", pos=None, labels=False, filename='wgraph.png', infected_nodes=[], notified_nodes=[]):
+    if pos == None:
+        pos = nx.spring_layout(G, k=10, seed=5)
 
     # Draw nodes
     if labels:
@@ -53,8 +60,19 @@ def draw_with_weights(G, elarge, esmall, labels=False, filename='wgraph.png'):
     G, pos, edgelist=esmall, width=2, alpha=0.5, edge_color="b", style="dashed"
     )
 
-    plt.savefig(make_file_path(filename))
+    # Draw infected users and notified
+    if notified_nodes:
+        nx.draw_networkx_nodes(G, pos, nodelist=notified_nodes, node_color="y")
+
+    if infected_nodes:
+        nx.draw_networkx_nodes(G, pos, nodelist=infected_nodes, node_color="r")
+
+    plt.title(title)
+    plt.axis ('off')
+    plt.savefig(make_file_path(filename), bbox_inches = 'tight')
     plt.show()
+
+    return pos
 
 def split_edge_sizes(G, operator, criteria):
     elarge = [(u, v) for (u, v, d) in G.edges(data=True) if operator(d["weight"], criteria)]

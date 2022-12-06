@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn import preprocessing
+import json
 
 datetime_format='%Y-%m-%d %H:%M:%S.%f%z'
 datetime_timezone='America/Sao_Paulo'
@@ -44,7 +45,7 @@ def aggregate_constant_contacts(df, filename="constant_contacts.csv"):
     )
 
     # Calculate duration of contacts
-    d['duration'] = d.apply(lambda x : (x['lastcontacttimestamp'] - x['firstcontacttimestamp']).total_seconds(), axis=1)
+    d['duration'] = d.apply(lambda x : (x['lastcontacttimestamp'] - x['firstcontacttimestamp']).total_seconds()/60, axis=1)
 
     # Save to csv
     d.to_csv(make_file_path(filename))
@@ -142,6 +143,20 @@ def normalize(df):
     df = pd.DataFrame(x_scaled)
 
     return df
+
+def rename_users_df(df, names):
+    df["user1"] = df["user1"].apply(lambda v: names[v]).astype(int)
+    df["user2"] = df["user2"].apply(lambda v: names[v]).astype(int)
+
+    return df
+
+def generate_new_names(users):
+    new = {user: idx for idx, user in enumerate(users)}
+
+    with open(make_file_path("new_names.json"), 'w') as output_file:
+        json.dump(new, output_file)
+
+    return new
 
 def make_file_path(filename):
     return 'generated/csv/' + filename

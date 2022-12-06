@@ -13,4 +13,6 @@
 # conda install -c conda-forge pycairo
 
 # conda install -c anaconda scipy
-conda install -c anaconda scikit-learn
+# conda install -c anaconda scikit-learn
+
+conda install -c conda-forge seaborn
