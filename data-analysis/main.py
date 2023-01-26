@@ -92,8 +92,14 @@ def print_metrics(df, values):
         print("Min e máx: ", df[value].min(), " ", df[value].max())
         print("====================\n")
 
-print_metrics(constant_df, ["distance", "duration"])
-print_metrics(metrics_df, ["total"])
-G = draw_graphs()
-plot_cdf(G)
-plot_scatter()
+# print_metrics(constant_df, ["distance", "duration"])
+# print_metrics(metrics_df, ["total"])
+# G = draw_graphs()
+# plot_cdf(G)
+# plot_scatter()
+
+df = pd.read_csv("data/data-1669162316639.csv")
+df = processing.parse_timestamp_types(df)
+moreplots.contacts_by_time(df)
+
+# graph.make_csv_edge_gephi(metrics, 'avg_distance')
