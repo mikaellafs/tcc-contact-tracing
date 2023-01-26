@@ -91,3 +91,11 @@ def is_at_risk(distance, duration):
 
 def make_file_path(filename):
     return 'generated/graph/' + filename
+
+def make_csv_edge_gephi(df, weight_column, filename='graph.csv'):
+    print(df)
+    gephi_df = df.copy()
+    gephi_df.rename({'user1': 'Source', 'user2': 'Target', weight_column: 'Weight'}, axis=1, inplace=True)
+    gephi_df['Weight'] = gephi_df['Weight']/100
+
+    gephi_df[['Source', 'Target', 'Weight']].to_csv('generated/gephi/' + filename)

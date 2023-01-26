@@ -15,4 +15,7 @@
 # conda install -c anaconda scipy
 # conda install -c anaconda scikit-learn
 
-conda install -c conda-forge seaborn
+# conda install -c conda-forge seaborn
+# conda install -c anaconda numpy
+
+conda install -c conda-forge opencv
