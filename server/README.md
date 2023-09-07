@@ -1,6 +1,6 @@
 Gerar stubs para grpc service:
 <!-- go generate -->
-protoc  src/grpc/proto/contact_tracing.proto --go-grpc_out=src/grpc --go_out=src/grpc
+protoc  pkg/grpc/proto/contact_tracing.proto --go-grpc_out=pkg/grpc --go_out=pkg/grpc
 
 sudo apt install protobuf-compiler
 sudo apt install golang-goprotobuf-dev

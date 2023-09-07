@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN go get -d -v ./src/cmd
-RUN go build -o server -v ./src/cmd
+RUN go get -d -v ./pkg/cmd
+RUN go build -o server -v ./pkg/cmd
 
 CMD ["./server"]
