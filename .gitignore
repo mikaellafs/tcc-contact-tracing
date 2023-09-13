@@ -15,5 +15,5 @@ logs.txt
 database.ini
 __pycache__
 
-data-analysis/generated
-data-analysis/data
+# data-analysis/generated
+# data-analysis/data
